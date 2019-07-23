@@ -126,7 +126,7 @@ module f_ctof_bind_interoperability
       l_domain%disc%iterationstep = l_domain%disc%iterationstep + 1
     end subroutine
 
-    subroutine f_interoperability_evaluateFrictionLaw( i_domain, i_face, i_godunov, i_imposedStatePlus, i_imposedStateMinus, i_numberOfPoints, i_godunovLd, i_time, timePoints, timeWeights, densityPlus, pWaveVelocityPlus, sWaveVelocityPlus, densityMinus, pWaveVelocityMinus, sWaveVelocityMinus ) bind (c, name='f_interoperability_evaluateFrictionLaw')
+    subroutine f_interoperability_evaluateFrictionLaw( i_domain, i_face, i_QInterpolatedPlus, i_QInterpolatedMinus, i_imposedStatePlus, i_imposedStateMinus, i_slip1, i_slip2, i_absoluteSlip, i_numberOfPoints, i_godunovLd, i_slipRateLd, i_time, timePoints, timeWeights, densityPlus, pWaveVelocityPlus, sWaveVelocityPlus, densityMinus, pWaveVelocityMinus, sWaveVelocityMinus ) bind (c, name='f_interoperability_evaluateFrictionLaw')
       use iso_c_binding
       use typesDef
       use f_ftoc_bind_interoperability
@@ -139,16 +139,27 @@ module f_ctof_bind_interoperability
 
       integer(kind=c_int), value             :: i_face
       integer(kind=c_int), value             :: i_numberOfPoints
-      integer(kind=c_int), value             :: i_godunovLd
+      integer(kind=c_int), value             :: i_godunovLd, i_slipRateLd
 
-      type(c_ptr), value                     :: i_godunov
-      REAL_TYPE, pointer                     :: l_godunov(:,:,:)
+      type(c_ptr), value                     :: i_QInterpolatedPlus
+      REAL_TYPE, pointer                     :: l_QInterpolatedPlus(:,:,:)
+      type(c_ptr), value                     :: i_QInterpolatedMinus
+      REAL_TYPE, pointer                     :: l_QInterpolatedMinus(:,:,:)
 
       type(c_ptr), value                     :: i_imposedStatePlus
       REAL_TYPE, pointer                     :: l_imposedStatePlus(:,:)
 
       type(c_ptr), value                     :: i_imposedStateMinus
       REAL_TYPE, pointer                     :: l_imposedStateMinus(:,:)
+
+      type(c_ptr), value                     :: i_slip1
+      REAL_TYPE, pointer                     :: l_slip1(:)
+
+      type(c_ptr), value                     :: i_slip2
+      REAL_TYPE, pointer                     :: l_slip2(:)
+
+      type(c_ptr), value                     :: i_absoluteSlip
+      REAL_TYPE, pointer                     :: l_absoluteSlip(:)
 
       type(c_ptr), value                     :: i_time
       real*8, pointer                        :: l_time
@@ -158,7 +169,7 @@ module f_ctof_bind_interoperability
 
       real(kind=c_double), value             :: densityPlus, pWaveVelocityPlus, sWaveVelocityPlus, densityMinus, pWaveVelocityMinus, sWaveVelocityMinus
 
-      REAL        :: rho, rho_neig
+      REAL        :: rho, rho_neig, Zp, Zp_neig, Zs, Zs_neig, eta_p, eta_s
       REAL        :: w_speed(3),w_speed_neig(3)
 
       REAL        :: TractionGP_XY(1:i_numberOfPoints,CONVERGENCE_ORDER)
@@ -175,12 +186,19 @@ module f_ctof_bind_interoperability
 
       ! convert c to fortran pointers
       call c_f_pointer( i_domain,             l_domain)
-      call c_f_pointer( i_godunov,            l_godunov, [i_godunovLd,9,CONVERGENCE_ORDER])
+      call c_f_pointer( i_QInterpolatedPlus,  l_QInterpolatedPlus,  [i_godunovLd,9,CONVERGENCE_ORDER])
+      call c_f_pointer( i_QInterpolatedMinus, l_QInterpolatedMinus, [i_godunovLd,9,CONVERGENCE_ORDER])
       call c_f_pointer( i_imposedStatePlus,   l_imposedStatePlus, [i_godunovLd,9])
       call c_f_pointer( i_imposedStateMinus,  l_imposedStateMinus, [i_godunovLd,9])
+      call c_f_pointer( i_slip1,              l_slip1,        [i_slipRateLd])
+      call c_f_pointer( i_slip2,              l_slip2,        [i_slipRateLd])
+      call c_f_pointer( i_absoluteSlip,       l_absoluteSlip, [i_slipRateLd])
       call c_f_pointer( i_time,               l_time  )
       
       call copyDynamicRuptureState(l_domain, i_face, i_face)
+      l_domain%disc%DynRup%output_Slip(:,i_face) = l_absoluteSlip(:)
+      l_domain%disc%DynRup%output_Slip1(:,i_face) = l_slip1(:)
+      l_domain%disc%DynRup%output_Slip2(:,i_face) = l_slip2(:)
 
       iElem               = l_domain%MESH%Fault%Face(i_face,1,1)          ! Remark:
       iSide               = l_domain%MESH%Fault%Face(i_face,2,1)          ! iElem denotes "+" side
@@ -190,11 +208,19 @@ module f_ctof_bind_interoperability
       rho_neig = densityMinus
       w_speed_neig(:) = (/ pWaveVelocityMinus, sWaveVelocityMinus, sWaveVelocityMinus /)
 
+      Zp = rho * pWaveVelocityPlus
+      Zp_neig = rho_neig * pWaveVelocityMinus
+      Zs = rho * sWaveVelocityPlus
+      Zs_neig = rho_neig * sWaveVelocityMinus
+
+      eta_p = Zp * Zp_neig / (Zp + Zp_neig)
+      eta_s = Zs * Zs_neig / (Zs + Zs_neig)
+
       do j=1,CONVERGENCE_ORDER
         do i=1,i_numberOfPoints
-          NorStressGP(i,j) = l_godunov(i,1,j)
-          XYStressGP(i,j) = l_godunov(i,4,j)
-          XZStressGP(i,j) = l_godunov(i,6,j)
+          NorStressGP(i,j) = eta_p * (l_QInterpolatedMinus(i,7,j) - l_QInterpolatedPlus(i,7,j) + l_QInterpolatedPlus(i,1,j) / Zp + l_QInterpolatedMinus(i,1,j) / Zp_neig)
+          XYStressGP(i,j)  = eta_s * (l_QInterpolatedMinus(i,8,j) - l_QInterpolatedPlus(i,8,j) + l_QInterpolatedPlus(i,4,j) / Zs + l_QInterpolatedMinus(i,4,j) / Zs_neig)
+          XZStressGP(i,j)  = eta_s * (l_QInterpolatedMinus(i,9,j) - l_QInterpolatedPlus(i,9,j) + l_QInterpolatedPlus(i,6,j) / Zs + l_QInterpolatedMinus(i,6,j) / Zs_neig)
         enddo
       enddo
 
@@ -209,19 +235,19 @@ module f_ctof_bind_interoperability
 
       do j=1,CONVERGENCE_ORDER
         do i=1,i_numberOfPoints
-          l_imposedStateMinus(i,1) = l_imposedStateMinus(i,1) + timeWeights(j) * l_godunov(i,1,j)
+          l_imposedStateMinus(i,1) = l_imposedStateMinus(i,1) + timeWeights(j) * NorStressGP(i,j)
           l_imposedStateMinus(i,4) = l_imposedStateMinus(i,4) + timeWeights(j) * TractionGP_XY(i,j)
           l_imposedStateMinus(i,6) = l_imposedStateMinus(i,6) + timeWeights(j) * TractionGP_XZ(i,j)
-          l_imposedStateMinus(i,7) = l_imposedStateMinus(i,7) + timeWeights(j) * l_godunov(i,7,j)
-          l_imposedStateMinus(i,8) = l_imposedStateMinus(i,8) + timeWeights(j) * (l_godunov(i,8,j) - 1.0D0/(w_speed_neig(2)*rho_neig) * (TractionGP_XY(i,j)-l_godunov(i,4,j)))
-          l_imposedStateMinus(i,9) = l_imposedStateMinus(i,9) + timeWeights(j) * (l_godunov(i,9,j) - 1.0D0/(w_speed_neig(2)*rho_neig) * (TractionGP_XZ(i,j)-l_godunov(i,6,j)))
+          l_imposedStateMinus(i,7) = l_imposedStateMinus(i,7) + timeWeights(j) * (l_QInterpolatedMinus(i,7,j) - (NorStressGP(i,j)-l_QInterpolatedMinus(i,1,j)) / Zp_neig)
+          l_imposedStateMinus(i,8) = l_imposedStateMinus(i,8) + timeWeights(j) * (l_QInterpolatedMinus(i,8,j) - (TractionGP_XY(i,j)-l_QInterpolatedMinus(i,4,j)) / Zs_neig)
+          l_imposedStateMinus(i,9) = l_imposedStateMinus(i,9) + timeWeights(j) * (l_QInterpolatedMinus(i,9,j) - (TractionGP_XZ(i,j)-l_QInterpolatedMinus(i,6,j)) / Zs_neig)
 
-          l_imposedStatePlus(i,1) = l_imposedStatePlus(i,1) + timeWeights(j) * l_godunov(i,1,j)
+          l_imposedStatePlus(i,1) = l_imposedStatePlus(i,1) + timeWeights(j) * NorStressGP(i,j)
           l_imposedStatePlus(i,4) = l_imposedStatePlus(i,4) + timeWeights(j) * TractionGP_XY(i,j)
           l_imposedStatePlus(i,6) = l_imposedStatePlus(i,6) + timeWeights(j) * TractionGP_XZ(i,j)
-          l_imposedStatePlus(i,7) = l_imposedStatePlus(i,7) + timeWeights(j) * l_godunov(i,7,j)
-          l_imposedStatePlus(i,8) = l_imposedStatePlus(i,8) + timeWeights(j) * (l_godunov(i,8,j) + 1.0D0/(w_speed(2)*rho) * (TractionGP_XY(i,j)-l_godunov(i,4,j)))
-          l_imposedStatePlus(i,9) = l_imposedStatePlus(i,9) + timeWeights(j) * (l_godunov(i,9,j) + 1.0D0/(w_speed(2)*rho) * (TractionGP_XZ(i,j)-l_godunov(i,6,j)))
+          l_imposedStatePlus(i,7) = l_imposedStatePlus(i,7) + timeWeights(j) * (l_QInterpolatedPlus(i,7,j) + (NorStressGP(i,j)-l_QInterpolatedPlus(i,1,j)) / Zp)
+          l_imposedStatePlus(i,8) = l_imposedStatePlus(i,8) + timeWeights(j) * (l_QInterpolatedPlus(i,8,j) + (TractionGP_XY(i,j)-l_QInterpolatedPlus(i,4,j)) / Zs)
+          l_imposedStatePlus(i,9) = l_imposedStatePlus(i,9) + timeWeights(j) * (l_QInterpolatedPlus(i,9,j) + (TractionGP_XZ(i,j)-l_QInterpolatedPlus(i,6,j)) / Zs)
         enddo
       enddo
 

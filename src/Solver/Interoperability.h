@@ -51,6 +51,7 @@
 #include <Initializer/tree/LTSTree.hpp>
 #include <Initializer/tree/Lut.hpp>
 #include <Physics/InitialField.h>
+#include <Kernels/Interface.hpp>
 
 namespace seissol {
   class Interoperability;
@@ -358,15 +359,12 @@ class seissol::Interoperability {
     **/
    void faultOutput( double i_fullUpdateTime, double i_timeStepWidth );
 
-   void evaluateFrictionLaw(  int face,
-                              real   godunov[CONVERGENCE_ORDER][seissol::tensor::godunovState::size()],
-                              real   imposedStatePlus[seissol::tensor::godunovState::size()],
-                              real   imposedStateMinus[seissol::tensor::godunovState::size()],
+   void evaluateFrictionLaw(  kernels::DynamicRuptureData& data,
+                              real   QInterpolatedPlus[CONVERGENCE_ORDER][seissol::tensor::QInterpolated::size()],
+                              real   QInterpolatedMinus[CONVERGENCE_ORDER][seissol::tensor::QInterpolated::size()],
                               double i_fullUpdateTime,
                               double timePoints[CONVERGENCE_ORDER],
-                              double timeWeights[CONVERGENCE_ORDER],
-                              seissol::model::IsotropicWaveSpeeds const& waveSpeedsPlus,
-                              seissol::model::IsotropicWaveSpeeds const& waveSpeedsMinus );
+                              double timeWeights[CONVERGENCE_ORDER] );
 
 
    /**

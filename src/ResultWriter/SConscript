@@ -59,6 +59,7 @@ writerFiles = [ 'inioutput_seissol.f90',
                 'FreeSurfaceWriter.cpp',
                 'FreeSurfaceWriterExecutor.cpp',
                 'PostProcessor.cpp',
+                'EnergyOutput.cpp',
                 'ReceiverWriter.cpp' ]
 
 for i in writerFiles:

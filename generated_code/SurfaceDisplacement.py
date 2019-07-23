@@ -48,19 +48,15 @@ def addKernels(generator, aderdg):
   maxDepth = 3
 
   numberOf3DBasisFunctions = aderdg.numberOf3DBasisFunctions()
-  numberOfQuantities = aderdg.numberOfQuantities()
-  selectVelocitySpp = np.zeros((numberOfQuantities, 3))
-  selectVelocitySpp[6:9,0:3] = np.eye(3)
-  selectVelocity = Tensor('selectVelocity', selectVelocitySpp.shape, selectVelocitySpp, CSCMemoryLayout)
 
   displacement = OptionalDimTensor('displacement', aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), (numberOf3DBasisFunctions, 3), alignStride=True)
-  generator.add('addVelocity', displacement['kp'] <= displacement['kp'] + aderdg.I['kq'] * selectVelocity['qp'])
+  generator.add('addVelocity', displacement['kp'] <= displacement['kp'] + aderdg.I['kq'] * aderdg.selectVelocity['qp'])
 
   subTriangleDofs = [OptionalDimTensor('subTriangleDofs({})'.format(depth), aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), (4**depth, 3), alignStride=True) for depth in range(maxDepth+1)]
   subTriangleProjection = [Tensor('subTriangleProjection({})'.format(depth), (4**depth, numberOf3DBasisFunctions), alignStride=True) for depth in range(maxDepth+1)]
 
   subTriangleDisplacement = lambda depth: subTriangleDofs[depth]['kp'] <= subTriangleProjection[depth]['kl'] * displacement['lp']
-  subTriangleVelocity     = lambda depth: subTriangleDofs[depth]['kp'] <= subTriangleProjection[depth]['kl'] * aderdg.Q['lq'] * selectVelocity['qp']
+  subTriangleVelocity     = lambda depth: subTriangleDofs[depth]['kp'] <= subTriangleProjection[depth]['kl'] * aderdg.Q['lq'] * aderdg.selectVelocity['qp']
 
   generator.addFamily('subTriangleDisplacement', simpleParameterSpace(maxDepth+1), subTriangleDisplacement)
   generator.addFamily('subTriangleVelocity', simpleParameterSpace(maxDepth+1), subTriangleVelocity)

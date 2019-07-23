@@ -37,21 +37,15 @@
  * @section DESCRIPTION
  **/
 
-#ifndef KERNELS_INTERFACE_H_
-#define KERNELS_INTERFACE_H_
+#ifndef KERNELS_INTERFACECOMMON_H_
+#define KERNELS_INTERFACECOMMON_H_
 
 #include <Initializer/tree/InterfaceHelper.hpp>
-#include <Initializer/LTS.h>
-#include <Kernels/InterfaceCommon.hpp>
-#include <Kernels/precision.hpp>
+#include <Initializer/DynamicRupture.h>
 
 namespace seissol {
   namespace kernels {
-    struct alignas(ALIGNMENT) LocalTmp {
-      alignas(ALIGNMENT) real timeIntegratedAne[tensor::Iane::size()];
-    };
-    LTSTREE_GENERATE_INTERFACE(LocalData, initializers::LTS, cellInformation, localIntegration, dofs, dofsAne)
-    LTSTREE_GENERATE_INTERFACE(NeighborData, initializers::LTS, cellInformation, neighboringIntegration, dofs, dofsAne)
+    LTSTREE_GENERATE_INTERFACE(DynamicRuptureData, initializers::DynamicRupture, faceInformation, godunovData, timeDerivativePlus, timeDerivativeMinus, imposedStatePlus, imposedStateMinus, waveSpeedsPlus, waveSpeedsMinus, drOutput)
   }
 }
 

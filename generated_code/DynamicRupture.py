@@ -38,8 +38,10 @@
 # @section DESCRIPTION
 #
 
+import numpy as np
 from yateto import Tensor, Scalar, simpleParameterSpace
 from yateto.input import parseJSONMatrixFile
+from yateto.memory import CSCMemoryLayout
 from multSim import OptionalDimTensor
 
 def addKernels(generator, aderdg, matricesDir, dynamicRuptureMethod):
@@ -56,30 +58,57 @@ def addKernels(generator, aderdg, matricesDir, dynamicRuptureMethod):
   db = parseJSONMatrixFile('{}/dr_{}_matrices_{}.json'.format(matricesDir, dynamicRuptureMethod, aderdg.order), clones, alignStride=aderdg.alignStride, transpose=aderdg.transpose)
 
   # Determine matrices
-  # Note: This does only work because the flux does not depend on the mechanisms in the case of viscoelastic attenuation
-  godShape = (aderdg.numberOfQuantities(), aderdg.numberOfQuantities())
-  godunovMatrix = Tensor('godunovMatrix', godShape)
+  TinvT = Tensor('TinvT', (aderdg.numberOfQuantities(), aderdg.numberOfQuantities()))
   fluxSolverShape = (aderdg.numberOfQuantities(), aderdg.numberOfExtendedQuantities())
   fluxSolver    = Tensor('fluxSolver', fluxSolverShape)
-  
-  gShape = (numberOfPoints, aderdg.numberOfQuantities())
-  godunovState = OptionalDimTensor('godunovState', aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), gShape, alignStride=True)
 
-  generator.add('rotateGodunovStateLocal', godunovMatrix['qp'] <= aderdg.Tinv['kq'] * aderdg.QgodLocal['kp'])
-  generator.add('rotateGodunovStateNeighbor', godunovMatrix['qp'] <= aderdg.Tinv['kq'] * aderdg.QgodNeighbor['kp'])
+  gShape = (numberOfPoints, aderdg.numberOfQuantities())
+  QInterpolated = OptionalDimTensor('QInterpolated', aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), gShape, alignStride=True)
 
   fluxScale = Scalar('fluxScale')
   generator.add('rotateFluxMatrix', fluxSolver['qp'] <= fluxScale * aderdg.starMatrix(0)['qk'] * aderdg.T['pk'])
 
-  def godunovStateGenerator(i,h):
-    target = godunovState['kp']
-    term = db.V3mTo2n[i,h][aderdg.t('kl')] * aderdg.Q['lq'] * godunovMatrix['qp']
-    if h == 0:
-      return target <= term
-    return target <= target + term
-  godunovStatePrefetch = lambda i,h: godunovState
-  generator.addFamily('godunovState', simpleParameterSpace(4,4), godunovStateGenerator, godunovStatePrefetch)
+  def interpolateQGenerator(i,h):
+    return QInterpolated['kp'] <= db.V3mTo2n[i,h][aderdg.t('kl')] * aderdg.Q['lq'] * TinvT['qp']
 
-  nodalFluxGenerator = lambda i,h: aderdg.extendedQTensor()['kp'] <= aderdg.extendedQTensor()['kp'] + db.V3mTo2nTWDivM[i,h][aderdg.t('kl')] * godunovState['lq'] * fluxSolver['qp']
+  interpolateQPrefetch = lambda i,h: QInterpolated
+  generator.addFamily('evaluateAndRotateQAtInterpolationPoints', simpleParameterSpace(4,4), interpolateQGenerator, interpolateQPrefetch)
+
+  nodalFluxGenerator = lambda i,h: aderdg.extendedQTensor()['kp'] <= aderdg.extendedQTensor()['kp'] + db.V3mTo2nTWDivM[i,h][aderdg.t('kl')] * QInterpolated['lq'] * fluxSolver['qp']
   nodalFluxPrefetch = lambda i,h: aderdg.I
   generator.addFamily('nodalFlux', simpleParameterSpace(4,4), nodalFluxGenerator, nodalFluxPrefetch)
+
+  # Energy output
+  # Minus and plus refer to the original implementation of Christian Pelties,
+  # where the normal points from the plus side to the minus side
+  QInterpolatedPlus = OptionalDimTensor('QInterpolatedPlus', aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), gShape, alignStride=True)
+  QInterpolatedMinus = OptionalDimTensor('QInterpolatedMinus', aderdg.Q.optName(), aderdg.Q.optSize(), aderdg.Q.optPos(), gShape, alignStride=True)
+  slipRateInterpolated = Tensor('slipRateInterpolated', (numberOfPoints,3))
+  slipInterpolated = Tensor('slipInterpolated', (numberOfPoints,3))
+  absoluteSlipInterpolated = Tensor('absoluteSlipInterpolated', (numberOfPoints,))
+  tractionInterpolated = Tensor('tractionInterpolated', (numberOfPoints,3))
+  frictionalEnergy = Tensor('frictionalEnergy', ())
+  timeWeight = Scalar('timeWeight')
+  spaceWeights = Tensor('spaceWeights', (numberOfPoints,))
+
+  selectTractionSpp = np.zeros((aderdg.numberOfQuantities(), 3), dtype=bool)
+  selectTractionSpp[0,0] = True
+  selectTractionSpp[3,1] = True
+  selectTractionSpp[5,2] = True
+  tractionPlusMatrix = Tensor('tractionPlusMatrix', selectTractionSpp.shape, selectTractionSpp, CSCMemoryLayout)
+  tractionMinusMatrix = Tensor('tractionMinusMatrix', selectTractionSpp.shape, selectTractionSpp, CSCMemoryLayout)
+
+  computeSlipRateInterpolated = slipRateInterpolated['kp'] <= QInterpolatedMinus['kq'] * aderdg.selectVelocity['qp'] - QInterpolatedPlus['kq'] * aderdg.selectVelocity['qp']
+  generator.add('computeSlipRateInterpolated', computeSlipRateInterpolated)
+
+  computeTractionInterpolated = tractionInterpolated['kp'] <= QInterpolatedMinus['kq'] * tractionMinusMatrix['qp'] + QInterpolatedPlus['kq'] * tractionPlusMatrix['qp']
+  generator.add('computeTractionInterpolated', computeTractionInterpolated)
+
+  addSlipRateInterpolated = slipInterpolated['kp'] <= slipInterpolated['kp'] + timeWeight * slipRateInterpolated['kp']
+  generator.add('addSlipRateInterpolated', addSlipRateInterpolated)
+
+  squareSlipRateInterpolated = absoluteSlipInterpolated['k'] <= slipRateInterpolated['kp'] * slipRateInterpolated['kp']
+  generator.add('squareSlipRateInterpolated', squareSlipRateInterpolated)
+
+  computeFrictionalEnergy = frictionalEnergy[''] <= frictionalEnergy[''] + timeWeight * tractionInterpolated['kp'] * slipRateInterpolated['kp'] * spaceWeights['k']
+  generator.add('computeFrictionalEnergy', computeFrictionalEnergy)

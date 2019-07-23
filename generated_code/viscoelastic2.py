@@ -78,6 +78,10 @@ class ADERDG(ADERDGBase):
     selectAneSpp[self.numberOfQuantities():self.numberOfExtendedQuantities(),0:self.numberOfAnelasticQuantities()] = np.eye(self.numberOfAnelasticQuantities())
     self.selectAne = Tensor('selectAne', (self.numberOfExtendedQuantities(), self.numberOfAnelasticQuantities()), selectAneSpp, CSCMemoryLayout)
 
+    selectVelocitySpp = np.zeros((self.numberOfQuantities(), 3))
+    selectVelocitySpp[6:9,0:3] = np.eye(3)
+    self.selectVelocity = Tensor('selectVelocity', selectVelocitySpp.shape, selectVelocitySpp, CSCMemoryLayout)
+
   def numberOfQuantities(self):
     return 9
 

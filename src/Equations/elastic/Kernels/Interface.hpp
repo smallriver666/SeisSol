@@ -42,6 +42,7 @@
 
 #include <Initializer/tree/InterfaceHelper.hpp>
 #include <Initializer/LTS.h>
+#include <Kernels/InterfaceCommon.hpp>
 
 namespace seissol {
   namespace kernels {

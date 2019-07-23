@@ -48,6 +48,7 @@
 #include "Modules/Modules.h"
 #include "Monitoring/Stopwatch.h"
 #include "Monitoring/FlopCounter.hpp"
+#include "ResultWriter/EnergyOutput.h"
 #include "ResultWriter/AnalysisWriter.h"
 
 extern seissol::Interoperability e_interoperability;
@@ -150,8 +151,12 @@ void seissol::Simulator::simulate() {
 
   seissol::SeisSol::main.timeManager().printComputationTime();
 
+  auto globalData = seissol::SeisSol::main.getMemoryManager().getGlobalData();
+  auto dynRup     = seissol::SeisSol::main.getMemoryManager().getDynamicRupture();
+  auto dynRupTree = seissol::SeisSol::main.getMemoryManager().getDynamicRuptureTree();
+  seissol::writer::printEnergies(globalData, dynRup, dynRupTree);
+
   seissol::SeisSol::main.analysisWriter().printAnalysis(m_currentTime);
 
   printFlops();
-
 }

@@ -62,6 +62,9 @@ void seissol::kernels::DynamicRupture::setGlobalData(GlobalData const* global) {
   }
 #endif
 
+  double points[NUMBER_OF_SPACE_QUADRATURE_POINTS][2];
+  seissol::quadrature::TriangleQuadrature(points, spaceWeights, CONVERGENCE_ORDER+1);
+
   m_krnlPrototype.V3mTo2n = global->faceToNodalMatrices;
 
   m_timeKernel.setGlobalData(global);
@@ -98,47 +101,92 @@ void seissol::kernels::DynamicRupture::setTimeStepWidth(double timestep)
 #endif
 }
 
-void seissol::kernels::DynamicRupture::computeGodunovState( DRFaceInformation const&    faceInfo,
-                                                            GlobalData const*           global,
-                                                            DRGodunovData const*        godunovData,
-                                                            real const*                 timeDerivativePlus,
-                                                            real const*                 timeDerivativeMinus,
-                                                            real                        godunov[CONVERGENCE_ORDER][seissol::tensor::godunovState::size()],
-                                                            real const*                 timeDerivativePlus_prefetch,
-                                                            real const*                 timeDerivativeMinus_prefetch ) {
+void seissol::kernels::DynamicRupture::spaceTimeInterpolation(  DynamicRuptureData const&   data,
+                                                                GlobalData const*           global,
+                                                                real                        QInterpolatedPlus[CONVERGENCE_ORDER][tensor::QInterpolated::size()],
+                                                                real                        QInterpolatedMinus[CONVERGENCE_ORDER][tensor::QInterpolated::size()],
+                                                                real const*                 timeDerivativePlus_prefetch,
+                                                                real const*                 timeDerivativeMinus_prefetch ) {
   // assert alignments
 #ifndef NDEBUG
-  assert( timeDerivativePlus != nullptr );
-  assert( timeDerivativeMinus != nullptr );
-  assert( ((uintptr_t)timeDerivativePlus) % ALIGNMENT == 0 );
-  assert( ((uintptr_t)timeDerivativeMinus) % ALIGNMENT == 0 );
-  assert( ((uintptr_t)&godunov[0])         % ALIGNMENT == 0 );
+  assert( data.timeDerivativePlus != nullptr );
+  assert( data.timeDerivativeMinus != nullptr );
+  assert( ((uintptr_t)data.timeDerivativePlus) % ALIGNMENT == 0 );
+  assert( ((uintptr_t)data.timeDerivativeMinus) % ALIGNMENT == 0 );
+  assert( ((uintptr_t)&QInterpolatedPlus[0])         % ALIGNMENT == 0 );
+  assert( ((uintptr_t)&QInterpolatedMinus[0])         % ALIGNMENT == 0 );
   assert( tensor::Q::size() == tensor::I::size() );
 #endif
 
   real degreesOfFreedomPlus[tensor::Q::size()] __attribute__((aligned(PAGESIZE_STACK)));
   real degreesOfFreedomMinus[tensor::Q::size()] __attribute__((aligned(PAGESIZE_STACK)));
 
-  kernel::godunovState krnl = m_krnlPrototype;
+  real slipRateInterpolated[tensor::slipRateInterpolated::size()] __attribute__((aligned(ALIGNMENT)));
+  real slipRateNormSquared[tensor::absoluteSlipInterpolated::size()] __attribute__((aligned(ALIGNMENT)));
+  real tractionInterpolated[tensor::tractionInterpolated::size()] __attribute__((aligned(ALIGNMENT)));
+
+  kernel::evaluateAndRotateQAtInterpolationPoints krnl = m_krnlPrototype;
+
+  kernel::computeSlipRateInterpolated srKrnl;
+  srKrnl.selectVelocity = init::selectVelocity::Values;
+
+  kernel::computeTractionInterpolated trKrnl;
+  trKrnl.tractionPlusMatrix = data.godunovData.tractionPlusMatrix;
+  trKrnl.tractionMinusMatrix = data.godunovData.tractionMinusMatrix;
+
+  kernel::addSlipRateInterpolated addKrnl;
+  addKrnl.slipInterpolated = data.drOutput.slip;
+  addKrnl.slipRateInterpolated = slipRateInterpolated;
+
+  kernel::squareSlipRateInterpolated sqKrnl;
+  sqKrnl.absoluteSlipInterpolated = slipRateNormSquared;
+  sqKrnl.slipRateInterpolated = slipRateInterpolated;
+
+  kernel::computeFrictionalEnergy feKrnl;
+  feKrnl.slipRateInterpolated = slipRateInterpolated;
+  feKrnl.tractionInterpolated = tractionInterpolated;
+  feKrnl.spaceWeights = spaceWeights;
+  feKrnl.frictionalEnergy = &data.drOutput.frictionalEnergy;
 
   for (unsigned timeInterval = 0; timeInterval < CONVERGENCE_ORDER; ++timeInterval) {
-    m_timeKernel.computeTaylorExpansion(timePoints[timeInterval], 0.0, timeDerivativePlus, degreesOfFreedomPlus);
-    m_timeKernel.computeTaylorExpansion(timePoints[timeInterval], 0.0, timeDerivativeMinus, degreesOfFreedomMinus);
+    m_timeKernel.computeTaylorExpansion(timePoints[timeInterval], 0.0, data.timeDerivativePlus, degreesOfFreedomPlus);
+    m_timeKernel.computeTaylorExpansion(timePoints[timeInterval], 0.0, data.timeDerivativeMinus, degreesOfFreedomMinus);
 
-    real const* plusPrefetch = (timeInterval < CONVERGENCE_ORDER-1) ? &godunov[timeInterval+1][0] : timeDerivativePlus_prefetch;
-    real const* minusPrefetch = (timeInterval < CONVERGENCE_ORDER-1) ? &godunov[timeInterval+1][0] : timeDerivativeMinus_prefetch;
+    real const* plusPrefetch = (timeInterval < CONVERGENCE_ORDER-1) ? &QInterpolatedPlus[timeInterval+1][0] : timeDerivativePlus_prefetch;
+    real const* minusPrefetch = (timeInterval < CONVERGENCE_ORDER-1) ? &QInterpolatedMinus[timeInterval+1][0] : timeDerivativeMinus_prefetch;
     
-    krnl.godunovState = &godunov[timeInterval][0];
-    
+    krnl.QInterpolated = &QInterpolatedPlus[timeInterval][0]; 
     krnl.Q = degreesOfFreedomPlus;
-    krnl.godunovMatrix = godunovData->godunovMatrixPlus;
-    krnl._prefetch.godunovState = plusPrefetch;
-    krnl.execute(faceInfo.plusSide, 0);
+    krnl.TinvT = data.godunovData.TinvT;
+    krnl._prefetch.QInterpolated = plusPrefetch;
+    krnl.execute(data.faceInformation.plusSide, 0);
     
+    krnl.QInterpolated = &QInterpolatedMinus[timeInterval][0]; 
     krnl.Q = degreesOfFreedomMinus;
-    krnl.godunovMatrix = godunovData->godunovMatrixMinus;
-    krnl._prefetch.godunovState = minusPrefetch;
-    krnl.execute(faceInfo.minusSide, faceInfo.faceRelation);
+    krnl.TinvT = data.godunovData.TinvT;
+    krnl._prefetch.QInterpolated = minusPrefetch;
+    krnl.execute(data.faceInformation.minusSide, data.faceInformation.faceRelation);
+
+    srKrnl.QInterpolatedPlus = &QInterpolatedPlus[timeInterval][0];
+    srKrnl.QInterpolatedMinus = &QInterpolatedMinus[timeInterval][0];
+    srKrnl.slipRateInterpolated = slipRateInterpolated;
+    srKrnl.execute();
+
+    trKrnl.QInterpolatedPlus = &QInterpolatedPlus[timeInterval][0];
+    trKrnl.QInterpolatedMinus = &QInterpolatedMinus[timeInterval][0];
+    trKrnl.tractionInterpolated = tractionInterpolated;
+    trKrnl.execute();
+
+    addKrnl.timeWeight = timeWeights[timeInterval];
+    addKrnl.execute();
+
+    sqKrnl.execute();
+    for (unsigned i = 0; i < tensor::absoluteSlipInterpolated::size(); ++i) {
+      data.drOutput.absoluteSlip[i] += timeWeights[timeInterval] * sqrt(slipRateNormSquared[i]);
+    }
+
+    feKrnl.timeWeight = - timeWeights[timeInterval] * data.godunovData.doubledSurfaceArea;
+    feKrnl.execute();
   }
 }
 
@@ -151,13 +199,27 @@ void seissol::kernels::DynamicRupture::flopsGodunovState( DRFaceInformation cons
   // 2x evaluateTaylorExpansion
   o_nonZeroFlops *= 2;
   o_hardwareFlops *= 2;
+
+  o_nonZeroFlops += kernel::evaluateAndRotateQAtInterpolationPoints::nonZeroFlops(faceInfo.plusSide, 0);
+  o_hardwareFlops += kernel::evaluateAndRotateQAtInterpolationPoints::hardwareFlops(faceInfo.plusSide, 0);
   
-  o_nonZeroFlops += kernel::godunovState::nonZeroFlops(faceInfo.plusSide, 0);
-  o_hardwareFlops += kernel::godunovState::hardwareFlops(faceInfo.plusSide, 0);
+  o_nonZeroFlops += kernel::evaluateAndRotateQAtInterpolationPoints::nonZeroFlops(faceInfo.minusSide, faceInfo.faceRelation);
+  o_hardwareFlops += kernel::evaluateAndRotateQAtInterpolationPoints::hardwareFlops(faceInfo.minusSide, faceInfo.faceRelation);
   
-  o_nonZeroFlops += kernel::godunovState::nonZeroFlops(faceInfo.minusSide, faceInfo.faceRelation);
-  o_hardwareFlops += kernel::godunovState::hardwareFlops(faceInfo.minusSide, faceInfo.faceRelation);
-  
+  o_nonZeroFlops += kernel::computeSlipRateInterpolated::NonZeroFlops;
+  o_hardwareFlops += kernel::computeSlipRateInterpolated::HardwareFlops;
+
+  o_nonZeroFlops += kernel::computeTractionInterpolated::NonZeroFlops;
+  o_hardwareFlops += kernel::computeTractionInterpolated::HardwareFlops;
+
+  o_nonZeroFlops += kernel::squareSlipRateInterpolated::NonZeroFlops;
+  o_hardwareFlops += kernel::squareSlipRateInterpolated::HardwareFlops;
+  o_nonZeroFlops += 2*tensor::absoluteSlipInterpolated::size();
+  o_hardwareFlops += 2*tensor::absoluteSlipInterpolated::size();
+
+  o_nonZeroFlops += kernel::computeFrictionalEnergy::NonZeroFlops;
+  o_hardwareFlops += kernel::computeFrictionalEnergy::HardwareFlops;
+
   o_nonZeroFlops *= CONVERGENCE_ORDER;
   o_hardwareFlops *= CONVERGENCE_ORDER;
 }

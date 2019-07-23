@@ -233,8 +233,6 @@ void seissol::initializers::initializeDynamicRuptureMatrices( MeshReader const& 
 {
   real TData[tensor::T::size()];
   real TinvData[tensor::Tinv::size()];
-  real QgodLocalData[tensor::QgodLocal::size()];
-  real QgodNeighborData[tensor::QgodNeighbor::size()];
   real APlusData[tensor::star::size(0)];
   real AMinusData[tensor::star::size(0)];
 
@@ -251,8 +249,8 @@ void seissol::initializers::initializeDynamicRuptureMatrices( MeshReader const& 
   for (LTSTree::leaf_iterator it = dynRupTree->beginLeaf(LayerMask(Ghost)); it != dynRupTree->endLeaf(); ++it) {
     real**                                timeDerivativePlus                                        = it->var(dynRup->timeDerivativePlus);
     real**                                timeDerivativeMinus                                       = it->var(dynRup->timeDerivativeMinus);
-    real                                (*imposedStatePlus)[tensor::godunovState::size()]           = it->var(dynRup->imposedStatePlus);
-    real                                (*imposedStateMinus)[tensor::godunovState::size()]          = it->var(dynRup->imposedStateMinus);
+    real                                (*imposedStatePlus)[tensor::QInterpolated::size()]          = it->var(dynRup->imposedStatePlus);
+    real                                (*imposedStateMinus)[tensor::QInterpolated::size()]         = it->var(dynRup->imposedStateMinus);
     DRGodunovData*                        godunovData                                               = it->var(dynRup->godunovData);
     real                                (*fluxSolverPlus)[tensor::fluxSolver::size()]               = it->var(dynRup->fluxSolverPlus);
     real                                (*fluxSolverMinus)[tensor::fluxSolver::size()]              = it->var(dynRup->fluxSolverMinus);
@@ -261,7 +259,7 @@ void seissol::initializers::initializeDynamicRuptureMatrices( MeshReader const& 
     seissol::model::IsotropicWaveSpeeds*  waveSpeedsMinus                                           = it->var(dynRup->waveSpeedsMinus);
 
 #ifdef _OPENMP
-  #pragma omp parallel for private(TData, TinvData, QgodLocalData, QgodNeighborData, APlusData, AMinusData) schedule(static)
+  #pragma omp parallel for private(TData, TinvData, APlusData, AMinusData) schedule(static)
 #endif
     for (unsigned ltsFace = 0; ltsFace < it->getNumberOfCells(); ++ltsFace) {
       unsigned meshFace = layerLtsFaceToMeshFace[ltsFace];
@@ -273,9 +271,11 @@ void seissol::initializers::initializeDynamicRuptureMatrices( MeshReader const& 
       faceInformation[ltsFace].minusSide = fault[meshFace].neighborSide;
       if (fault[meshFace].element >= 0) {
         faceInformation[ltsFace].faceRelation = elements[ fault[meshFace].element ].sideOrientations[ fault[meshFace].side ] + 1;
+        faceInformation[ltsFace].plusSideOnThisRank = true;
       } else {
         /// \todo check if this is correct
         faceInformation[ltsFace].faceRelation = elements[ fault[meshFace].neighborElement ].sideOrientations[ fault[meshFace].neighborSide ] + 1;
+        faceInformation[ltsFace].plusSideOnThisRank = false;
       }
 
       /// Look for time derivative mapping in all duplicates
@@ -375,41 +375,57 @@ void seissol::initializers::initializeDynamicRuptureMatrices( MeshReader const& 
       waveSpeedsMinus[ltsFace].pWaveVelocity = sqrt( (minusMaterial.lambda + 2.0*minusMaterial.mu) / minusMaterial.rho);
       waveSpeedsMinus[ltsFace].sWaveVelocity = sqrt( minusMaterial.mu / minusMaterial.rho);
 
-      /// Godunov state
-      auto QgodLocal = init::QgodLocal::view::create(QgodLocalData);
-      auto QgodNeighbor = init::QgodNeighbor::view::create(QgodNeighborData);
-      seissol::model::getTransposedElasticGodunovState( plusMaterial, minusMaterial, dynamicRupture, QgodLocal, QgodNeighbor );
+      /// Traction matrices for "average" traction
+      auto tractionPlusMatrix = init::tractionPlusMatrix::view::create(godunovData[ltsFace].tractionPlusMatrix);
+      auto tractionMinusMatrix = init::tractionMinusMatrix::view::create(godunovData[ltsFace].tractionMinusMatrix);
+      double ZpP = plusMaterial.rho * waveSpeedsPlus[ltsFace].pWaveVelocity;
+      double ZsP = plusMaterial.rho * waveSpeedsPlus[ltsFace].sWaveVelocity;
+      double ZpM = minusMaterial.rho * waveSpeedsMinus[ltsFace].pWaveVelocity;
+      double ZsM = minusMaterial.rho * waveSpeedsMinus[ltsFace].sWaveVelocity;
+      double etaP = ZpP*ZpM / (ZpP + ZpM);
+      double etaS = ZsP*ZsM / (ZsP + ZsM);
 
-      kernel::rotateGodunovStateLocal rlKrnl;
-      rlKrnl.godunovMatrix = godunovData[ltsFace].godunovMatrixPlus;
-      rlKrnl.Tinv = TinvData;
-      rlKrnl.QgodLocal = QgodLocalData;
-      rlKrnl.execute();
+      tractionPlusMatrix.setZero();
+      tractionPlusMatrix(0,0) = etaP / ZpP;
+      tractionPlusMatrix(3,1) = etaS / ZsP;
+      tractionPlusMatrix(5,2) = etaS / ZsP;
 
-      kernel::rotateGodunovStateNeighbor rnKrnl;
-      rnKrnl.godunovMatrix = godunovData[ltsFace].godunovMatrixMinus;
-      rnKrnl.Tinv = TinvData;
-      rnKrnl.QgodNeighbor = QgodNeighborData;
-      rnKrnl.execute();
+      tractionMinusMatrix.setZero();
+      tractionMinusMatrix(0,0) = etaP / ZpM;
+      tractionMinusMatrix(3,1) = etaS / ZsM;
+      tractionMinusMatrix(5,2) = etaS / ZsM;
+
+      auto TinvT = init::TinvT::view::create(godunovData[ltsFace].TinvT);
+      TinvT.setZero();
+
+      for (unsigned col = 0; col < TinvT.shape(1); ++col) {
+        for (unsigned row = 0; row < TinvT.shape(0); ++row) {
+          TinvT(row, col) = Tinv(col, row);
+        }
+      }
 
       auto APlus = init::star::view<0>::create(APlusData);
       auto AMinus = init::star::view<0>::create(AMinusData);
       seissol::model::getTransposedCoefficientMatrix(plusMaterial, 0, APlus);
       seissol::model::getTransposedCoefficientMatrix(minusMaterial, 0, AMinus);
 
-      double plusSurfaceArea, plusVolume, minusSurfaceArea, minusVolume;
+      double plusSurfaceArea, plusVolume, minusSurfaceArea, minusVolume, surfaceArea = 1.e99;
       if (fault[meshFace].element >= 0) {
         surfaceAreaAndVolume( i_meshReader, fault[meshFace].element, fault[meshFace].side, &plusSurfaceArea, &plusVolume );
+        surfaceArea = plusSurfaceArea;
       } else {
         /// Blow up solution on purpose if used by mistake
         plusSurfaceArea = 1.e99; plusVolume = 1.0;
       }
       if (fault[meshFace].neighborElement >= 0) {
         surfaceAreaAndVolume( i_meshReader, fault[meshFace].neighborElement, fault[meshFace].neighborSide, &minusSurfaceArea, &minusVolume );
+        surfaceArea = minusSurfaceArea;
       } else {
         /// Blow up solution on purpose if used by mistake
         minusSurfaceArea = 1.e99; minusVolume = 1.0;
       }
+
+      godunovData[ltsFace].doubledSurfaceArea = 2.0 * surfaceArea;
 
       kernel::rotateFluxMatrix krnl;
       krnl.T = TData;

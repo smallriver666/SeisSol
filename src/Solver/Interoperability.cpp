@@ -258,11 +258,16 @@ extern "C" {
 
   extern void f_interoperability_evaluateFrictionLaw( void*   i_domain,
                                                       int     i_face,
-                                                      real*   i_godunov,
+                                                      real*   i_QInterpolatedPlus,
+                                                      real*   i_QInterpolatedMinus,
                                                       real*   i_imposedStatePlus,
                                                       real*   i_imposedStateMinus,
+                                                      real*   i_slip1,
+                                                      real*   i_slip2,
+                                                      real*   i_absoluteSlip,
                                                       int     i_numberOfBasisFunctions2D,
                                                       int     i_godunovLd,
+                                                      int     i_slipRateLd,
                                                       double* i_fullUpdateTime,
                                                       double* timePoints,
                                                       double* timeWeights,
@@ -809,36 +814,39 @@ void seissol::Interoperability::faultOutput( double i_fullUpdateTime,
   f_interoperability_faultOutput( m_domain, &i_fullUpdateTime, &i_timeStepWidth );
 }
 
-void seissol::Interoperability::evaluateFrictionLaw(  int face,
-                                                      real godunov[CONVERGENCE_ORDER][seissol::tensor::godunovState::size()],
-                                                      real imposedStatePlus[seissol::tensor::godunovState::size()],
-                                                      real imposedStateMinus[seissol::tensor::godunovState::size()],
+void seissol::Interoperability::evaluateFrictionLaw(  kernels::DynamicRuptureData& data,
+                                                      real   QInterpolatedPlus[CONVERGENCE_ORDER][seissol::tensor::QInterpolated::size()],
+                                                      real   QInterpolatedMinus[CONVERGENCE_ORDER][seissol::tensor::QInterpolated::size()],
                                                       double i_fullUpdateTime,
                                                       double timePoints[CONVERGENCE_ORDER],
-                                                      double timeWeights[CONVERGENCE_ORDER],
-                                                      seissol::model::IsotropicWaveSpeeds const& waveSpeedsPlus,
-                                                      seissol::model::IsotropicWaveSpeeds const& waveSpeedsMinus )
+                                                      double timeWeights[CONVERGENCE_ORDER] )
 {
-  int fFace = face + 1;
-  int numberOfPoints = tensor::godunovState::Shape[0];
-  int godunovLd = init::godunovState::Stop[0] - init::godunovState::Start[0];
+  int fFace = static_cast<int>(data.faceInformation.meshFace) + 1;
+  int numberOfPoints = tensor::QInterpolated::Shape[0];
+  int godunovLd = init::QInterpolated::Stop[0] - init::QInterpolated::Start[0];
+  int slipRateLd = init::slipRateInterpolated::Stop[0] - init::slipRateInterpolated::Start[0];
 
   f_interoperability_evaluateFrictionLaw( m_domain,
                                           fFace,
-                                         &godunov[0][0],
-                                         &imposedStatePlus[0],
-                                         &imposedStateMinus[0],
+                                         &QInterpolatedPlus[0][0],
+                                         &QInterpolatedMinus[0][0],
+                                         &data.imposedStatePlus[0],
+                                         &data.imposedStateMinus[0],
+                                         &data.drOutput.slip[1*slipRateLd],
+                                         &data.drOutput.slip[2*slipRateLd],
+                                         &data.drOutput.absoluteSlip[0],
                                           numberOfPoints,
                                           godunovLd,
+                                          slipRateLd,
                                           &i_fullUpdateTime,
                                           &timePoints[0],
                                           &timeWeights[0],
-                                          waveSpeedsPlus.density,
-                                          waveSpeedsPlus.pWaveVelocity,
-                                          waveSpeedsPlus.sWaveVelocity,
-                                          waveSpeedsMinus.density,
-                                          waveSpeedsMinus.pWaveVelocity,
-                                          waveSpeedsMinus.sWaveVelocity);
+                                          data.waveSpeedsPlus.density,
+                                          data.waveSpeedsPlus.pWaveVelocity,
+                                          data.waveSpeedsPlus.sWaveVelocity,
+                                          data.waveSpeedsMinus.density,
+                                          data.waveSpeedsMinus.pWaveVelocity,
+                                          data.waveSpeedsMinus.sWaveVelocity);
 }
 
 void seissol::Interoperability::calcElementwiseFaultoutput(double time)

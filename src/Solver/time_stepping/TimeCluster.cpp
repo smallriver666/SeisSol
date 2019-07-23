@@ -227,39 +227,34 @@ void seissol::time_stepping::TimeCluster::computeDynamicRupture( seissol::initia
 
   m_loopStatistics->begin(m_regionComputeDynamicRupture);
 
-  DRFaceInformation*                    faceInformation                                                   = layerData.var(m_dynRup->faceInformation);
-  DRGodunovData*                        godunovData                                                       = layerData.var(m_dynRup->godunovData);
-  real**                                timeDerivativePlus                                                = layerData.var(m_dynRup->timeDerivativePlus);
-  real**                                timeDerivativeMinus                                               = layerData.var(m_dynRup->timeDerivativeMinus);
-  real                                (*godunov)[CONVERGENCE_ORDER][tensor::godunovState::size()]         = layerData.var(m_dynRup->godunov);
-  real                                (*imposedStatePlus)[tensor::godunovState::size()]                   = layerData.var(m_dynRup->imposedStatePlus);
-  real                                (*imposedStateMinus)[tensor::godunovState::size()]                  = layerData.var(m_dynRup->imposedStateMinus);
-  seissol::model::IsotropicWaveSpeeds*  waveSpeedsPlus                                                    = layerData.var(m_dynRup->waveSpeedsPlus);
-  seissol::model::IsotropicWaveSpeeds*  waveSpeedsMinus                                                   = layerData.var(m_dynRup->waveSpeedsMinus);
+  real** timeDerivativePlus = layerData.var(m_dynRup->timeDerivativePlus);
+  real** timeDerivativeMinus = layerData.var(m_dynRup->timeDerivativeMinus);
+
+  kernels::DynamicRuptureData::Loader loader;
+  loader.load(*m_dynRup, layerData);
+
+  real QInterpolatedPlus[CONVERGENCE_ORDER][tensor::QInterpolated::size()] __attribute__((aligned(ALIGNMENT)));
+  real QInterpolatedMinus[CONVERGENCE_ORDER][tensor::QInterpolated::size()] __attribute__((aligned(ALIGNMENT)));
 
 #ifdef _OPENMP
-  #pragma omp parallel for schedule(static)
+  #pragma omp for schedule(static) private(QInterpolatedPlus,QInterpolatedMinus)
 #endif
   for (unsigned face = 0; face < layerData.getNumberOfCells(); ++face) {
+    auto data = loader.entry(face);
     unsigned prefetchFace = (face < layerData.getNumberOfCells()-1) ? face+1 : face;
-    m_dynamicRuptureKernel.computeGodunovState( faceInformation[face],
-                                                m_globalData,
-                                               &godunovData[face],
-                                                timeDerivativePlus[face],
-                                                timeDerivativeMinus[face],
-                                                godunov[face],
-                                                timeDerivativePlus[prefetchFace],
-                                                timeDerivativeMinus[prefetchFace] );
+    m_dynamicRuptureKernel.spaceTimeInterpolation(  data,
+                                                    m_globalData,
+                                                    QInterpolatedPlus,
+                                                    QInterpolatedMinus,
+                                                    timeDerivativePlus[prefetchFace],
+                                                    timeDerivativeMinus[prefetchFace] );
 
-    e_interoperability.evaluateFrictionLaw( static_cast<int>(faceInformation[face].meshFace),
-                                            godunov[face],
-                                            imposedStatePlus[face],
-                                            imposedStateMinus[face],
+    e_interoperability.evaluateFrictionLaw( data,
+                                            QInterpolatedPlus,
+                                            QInterpolatedMinus,
                                             m_fullUpdateTime,
                                             m_dynamicRuptureKernel.timePoints,
-                                            m_dynamicRuptureKernel.timeWeights,
-                                            waveSpeedsPlus[face],
-                                            waveSpeedsMinus[face] );
+                                            m_dynamicRuptureKernel.timeWeights );
   }
 
   m_loopStatistics->end(m_regionComputeDynamicRupture, layerData.getNumberOfCells());
