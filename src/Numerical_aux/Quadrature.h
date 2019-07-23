@@ -126,7 +126,8 @@ namespace seissol {
      *  
      *  n is the polynomial degree. Make sure that points and weights have space for n^2 entries.
      */     
-    inline void TriangleQuadrature(double (*points)[2], double* weights, unsigned n)
+    template<typename float_t>
+    inline void TriangleQuadrature(float_t (*points)[2], float_t* weights, unsigned n)
     {
       double* points0  = new double[n];
       double* weights0 = new double[n];
@@ -152,7 +153,8 @@ namespace seissol {
     /** Quadrature formula of arbitrary accuracy on the reference tetrahedron
      *  consisting of the nodes (0,0,0), (1,0,0), (0,1,0), (0,0,1)
      */
-    inline void TetrahedronQuadrature(double (*points)[3], double* weights, unsigned int n) {
+    template<typename float_t>
+    inline void TetrahedronQuadrature(float_t (*points)[3], float_t* weights, unsigned int n) {
       // This is a port of similarly named fortran method
       // (TetrahedronQuadraturePoints) in quadpoints.f90.
       // Note:

@@ -49,12 +49,12 @@ namespace seissol
 namespace writer
 {
 
-double computeStaticWork( GlobalData const*           global,
-                          real*                       degreesOfFreedomPlus,
-                          real*                       degreesOfFreedomMinus,
-                          DRFaceInformation const&    faceInfo,
-                          DRGodunovData const&        godunovData,
-                          real                        slip[seissol::tensor::slipInterpolated::size()] );
+real computeStaticWork( GlobalData const*           global,
+                        real*                       degreesOfFreedomPlus,
+                        real*                       degreesOfFreedomMinus,
+                        DRFaceInformation const&    faceInfo,
+                        DRGodunovData const&        godunovData,
+                        real                        slip[seissol::tensor::slipInterpolated::size()] );
 
 void printEnergies( GlobalData const*             global,
                     initializers::DynamicRupture* dynRup,

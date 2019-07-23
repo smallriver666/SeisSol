@@ -3,16 +3,15 @@
 #include <Kernels/DynamicRupture.h>
 #include <Numerical_aux/Quadrature.h>
 
-double seissol::writer::computeStaticWork(  GlobalData const*           global,
-                                            real*                       degreesOfFreedomPlus,
-                                            real*                       degreesOfFreedomMinus,
-                                            DRFaceInformation const&    faceInfo,
-                                            DRGodunovData const&        godunovData,
-                                            real                        slip[seissol::tensor::slipInterpolated::size()] )
+real seissol::writer::computeStaticWork(  GlobalData const*           global,
+                                          real*                       degreesOfFreedomPlus,
+                                          real*                       degreesOfFreedomMinus,
+                                          DRFaceInformation const&    faceInfo,
+                                          DRGodunovData const&        godunovData,
+                                          real                        slip[seissol::tensor::slipInterpolated::size()] )
 {
-  double points[NUMBER_OF_SPACE_QUADRATURE_POINTS][2];
-  /// \todo spaceWeights should be of type real
-  double spaceWeights[NUMBER_OF_SPACE_QUADRATURE_POINTS];
+  real points[NUMBER_OF_SPACE_QUADRATURE_POINTS][2];
+  real spaceWeights[NUMBER_OF_SPACE_QUADRATURE_POINTS];
   seissol::quadrature::TriangleQuadrature(points, spaceWeights, CONVERGENCE_ORDER+1);
 
   kernel::evaluateAndRotateQAtInterpolationPoints krnl;
@@ -42,7 +41,7 @@ double seissol::writer::computeStaticWork(  GlobalData const*           global,
   trKrnl.tractionInterpolated = tractionInterpolated;
   trKrnl.execute();
 
-  double staticWork = 0.0;
+  real staticWork = 0.0;
   kernel::computeFrictionalEnergy feKrnl;
   feKrnl.slipRateInterpolated = slip;
   feKrnl.tractionInterpolated = tractionInterpolated;

@@ -62,7 +62,7 @@ void seissol::kernels::DynamicRupture::setGlobalData(GlobalData const* global) {
   }
 #endif
 
-  double points[NUMBER_OF_SPACE_QUADRATURE_POINTS][2];
+  real points[NUMBER_OF_SPACE_QUADRATURE_POINTS][2];
   seissol::quadrature::TriangleQuadrature(points, spaceWeights, CONVERGENCE_ORDER+1);
 
   m_krnlPrototype.V3mTo2n = global->faceToNodalMatrices;
