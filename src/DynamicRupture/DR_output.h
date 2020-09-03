@@ -1,11 +1,7 @@
-//
-// Created by adrian on 09.07.20.
-//
-
 #ifndef SEISSOL_DR_OUTPUT_H
 #define SEISSOL_DR_OUTPUT_H
 
-#include <yaml-cpp/yaml.h>
+#include "Initializer/InputAux.hpp"
 
 namespace seissol {
     namespace dr {
@@ -18,12 +14,26 @@ namespace seissol {
     }
 }
 
-
-
 class seissol::dr::output::Base{
 public:
     virtual ~Base() {}
-    void setInputParam(const YAML::Node& Param) {m_InputParam = Param;}
+
+    void setInputParam(const YAML::Node& Params) {
+      using namespace initializers;
+
+      const YAML::Node& DrParams = Params["dynamicrupture"];
+      m_Params.OutputPointType = getParamIfExists(DrParams, "outputpointtype", 3);
+      m_Params.SlipRateOutputType = getParamIfExists(DrParams, "sliprateoutputtype", 1);
+      m_Params.FrictionLawType = getParamIfExists(DrParams, "fl", 0);
+      m_Params.BackgroundType = getParamIfExists(DrParams, "backgroundtype", 0);
+      m_Params.IsRfOutputOn = getParamIfExists(DrParams, "rf_output_on", false);
+      m_Params.IsDsOutputOn = getParamIfExists(DrParams, "ds_output_on", false);
+      m_Params.IsMagnitudeOutputOn = getParamIfExists(DrParams, "magnitude_output_on", false);
+      m_Params.IsEnergyRateOutputOn = getParamIfExists(DrParams, "energy_rate_output_on", false);
+      m_Params.IsGpWiseOutput = getParamIfExists(DrParams, "gpwise", false);
+      m_Params.IsTermalPressureOn = getParamIfExists(DrParams, "thermalpress", false);
+      m_Params.BackgroundType = getParamIfExists(DrParams, "energy_rate_printtimeinterval", 1);
+    }
 
     virtual void tiePointers(seissol::initializers::Layer&  layerData,
             seissol::initializers::DynamicRupture *dynRup,
@@ -42,7 +52,7 @@ public:
 
 
 
-        DRFaceInformation*                    faceInformation = layerData.var(dynRup->faceInformation);
+        DRFaceInformation* faceInformation = layerData.var(dynRup->faceInformation);
 
         #ifdef _OPENMP
         #pragma omp parallel for schedule(static)
@@ -56,7 +66,19 @@ public:
     virtual void postCompute(seissol::initializers::DynamicRupture &DynRup) = 0;
 
 protected:
-  YAML::Node m_InputParam;
+  struct ParamsT {
+    int OutputPointType{3};
+    int SlipRateOutputType{1};
+    int FrictionLawType{0};
+    int BackgroundType{0};
+    bool IsRfOutputOn{false};
+    bool IsDsOutputOn{false};
+    bool IsMagnitudeOutputOn{false};
+    bool IsEnergyRateOutputOn{false};
+    bool IsGpWiseOutput{false};
+    bool IsTermalPressureOn{false};
+    int EnergyRatePrintTimeInterval{1};
+  } m_Params;
 };
 
 class seissol::dr::output::FL_2 : public seissol::dr::output::Base {
