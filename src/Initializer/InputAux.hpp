@@ -3,6 +3,7 @@
 
 #include <type_traits>
 #include <string>
+#include <fstream>
 #include <yaml-cpp/yaml.h>
 
 namespace seissol {
@@ -35,7 +36,7 @@ namespace seissol {
       auto Begin = std::istream_iterator<OutputType>(InputStream);
       auto End = std::istream_iterator<OutputType>();
 
-      const int NumInputElements = std::distance(Begin, End);
+      const size_t NumInputElements = std::distance(Begin, End);
       return NumInputElements <= OutputMask.size();
     }
 
@@ -64,6 +65,45 @@ namespace seissol {
         }
       }
     }
+
+    using StringsT = std::list<std::string>;
+    class FileProcessor {
+    public:
+      static StringsT getFileAsStrings(const std::string &FileName) {
+        StringsT Content;
+        std::fstream ParamFile(FileName, std::ios_base::in);
+        if (!ParamFile.is_open()) {
+          throw std::runtime_error("cannot open file: " + FileName);
+        }
+
+        std::string TmpString;
+        while (std::getline(ParamFile, TmpString)) {
+          Content.push_back(TmpString);
+        }
+
+        ParamFile.close();
+        return Content;
+      }
+
+      static void removeEmptyLines(StringsT &Content) {
+
+        const std::string WHITESPACE = " \n\r\t\f\v";
+        auto isEmptyString = [&WHITESPACE](const std::string &String) -> bool {
+          size_t Start = String.find_first_not_of(WHITESPACE);
+          return Start == std::string::npos;
+        };
+
+        std::vector<StringsT::iterator> Deletees;
+        for (auto Itr = Content.begin(); Itr != Content.end(); ++Itr) {
+          if (isEmptyString(*Itr))
+            Deletees.push_back(Itr);
+        }
+
+        for (auto &Itr : Deletees) {
+          Content.erase(Itr);
+        }
+      }
+    };
 
   }
 }

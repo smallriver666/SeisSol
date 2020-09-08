@@ -11,7 +11,7 @@
 #include <Initializer/DynamicRupture.h>
 #include "DR_initializer_base.h"
 #include "DR_friction_law.h"
-#include "DR_output.h"
+#include "DynamicRupture/Output/DrOutput.hpp"
 
 
 namespace seissol {

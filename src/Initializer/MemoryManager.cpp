@@ -702,7 +702,9 @@ void seissol::initializers::MemoryManager::initializeFrictionFactory() {
 
     //TODO: do we actually need the parameters int these classes?
     m_FrictonLaw->setInputParam(DynamicRupture);
-    m_DrOutput->setInputParam(m_inputParams);
+
+    m_DrOutput->setInputParam(m_inputParams, seissol::SeisSol::main.meshReader());
+    m_DrOutput->init();
 
     delete Factory;    // prepare the data
   }
