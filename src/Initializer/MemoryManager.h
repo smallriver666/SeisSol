@@ -311,6 +311,7 @@ class seissol::initializers::MemoryManager {
 
     //added by Adrian
     void initializeFrictionFactory();
+    void prepareFaultOutput(const std::unordered_map<std::string, double*>& FaultParams);
 
     inline dr::fr_law::Base* getFrictionLaw() {
         return m_FrictonLaw;

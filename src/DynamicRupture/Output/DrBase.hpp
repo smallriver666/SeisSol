@@ -66,8 +66,8 @@ public:
     }
   }
 
-  void init() {
-    if (m_EwOutput) m_EwOutput->init();
+  void init(const std::unordered_map<std::string, double*>& FaultParams) {
+    if (m_EwOutput) m_EwOutput->init(FaultParams);
     if (m_PpOutput) m_PpOutput->init();
   }
 

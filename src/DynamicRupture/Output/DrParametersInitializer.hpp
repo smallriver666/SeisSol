@@ -26,7 +26,6 @@ public:
     }
 
     const YAML::Node& DrData = m_Data["dynamicrupture"];
-
     Params.OutputPointType = static_cast<OutputType>(getParamIfExists(DrData, "outputpointtype", 3));
     Params.SlipRateOutputType = getParamIfExists(DrData, "sliprateoutputtype", 1);
     Params.FrictionLawType = getParamIfExists(DrData, "fl", 0);
@@ -38,6 +37,18 @@ public:
     Params.IsGpWiseOutput = getParamIfExists(DrData, "gpwise", false);
     Params.IsTermalPressureOn = getParamIfExists(DrData, "thermalpress", false);
     Params.BackgroundType = getParamIfExists(DrData, "energy_rate_printtimeinterval", 1);
+
+
+    const YAML::Node& OutputParams = m_Data["output"];
+    Params.FaultOutputFlag = getParamIfExists(OutputParams, "faultoutputflag", false);
+    Params.OutputFilePrefix = getParamIfExists(OutputParams, "outputfile", std::string("data"));
+    Params.CheckPointBackend = getParamIfExists(OutputParams, "checkpointbackend", std::string("none"));
+
+#ifdef USE_HDF
+    Params.XdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("hdf5"));
+#else
+    Params.XdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("posix"));
+#endif
 
     return Params;
   }
@@ -79,6 +90,7 @@ public:
     EwParams.PrintTimeInterval = getParamIfExists(EwData, "printtimeinterval", 2);
     EwParams.PrintTimeIntervalSec = getParamIfExists(EwData, "printtimeinterval_sec", 1.0);
     EwParams.PrintIntervalCriterion = getParamIfExists(EwData, "printintervalcriterion", 1);
+    EwParams.MaxPickStore = getParamIfExists(EwData, "maxpickstore", 50);
     EwParams.RefinementStrategy = getParamIfExists(EwData, "refinement_strategy", 2);
     EwParams.Refinement = getParamIfExists(EwData, "refinement", 2);
 

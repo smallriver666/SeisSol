@@ -131,8 +131,8 @@ src/DynamicRupture/DR_math.h
 src/DynamicRupture/DR_factory.h
 src/DynamicRupture/DR_initializer_base.h
 src/DynamicRupture/DR_friction_law.h
-src/DynamicRupture/DR_output.h
-src/DynamicRupture/DR_factory.cpp)
+src/DynamicRupture/DR_factory.cpp
+src/DynamicRupture/Output/FaultRefiner/RefinerFactory.cpp)
 
 
 

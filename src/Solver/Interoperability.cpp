@@ -387,6 +387,7 @@ void seissol::Interoperability::initializeClusteredLts( int i_clustering, bool e
 
   //added by Adrian
   seissol::SeisSol::main.getMemoryManager().initializeFrictionFactory();
+  seissol::SeisSol::main.getMemoryManager().prepareFaultOutput(m_faultParameters);
 
   unsigned* numberOfDRCopyFaces;
   unsigned* numberOfDRInteriorFaces;

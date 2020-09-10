@@ -691,7 +691,6 @@ void seissol::initializers::MemoryManager::initializeFrictionFactory() {
     // reading input provided by parameters.par
     YAML::Node DynamicRupture = m_inputParams["dynamicrupture"];
     int FrictionLawID = DynamicRupture["fl"] ? DynamicRupture["fl"].as<int>() : 0;
-    bool InstantHealing = (DynamicRupture["inst_healing"]) ? true : false;
     Friction_law_type FrictionLaw = Friction_law_type(FrictionLawID);
 
 
@@ -702,9 +701,8 @@ void seissol::initializers::MemoryManager::initializeFrictionFactory() {
 
     //TODO: do we actually need the parameters int these classes?
     m_FrictonLaw->setInputParam(DynamicRupture);
-
     m_DrOutput->setInputParam(m_inputParams, seissol::SeisSol::main.meshReader());
-    m_DrOutput->init();
+
 
     delete Factory;    // prepare the data
   }
@@ -713,4 +711,9 @@ void seissol::initializers::MemoryManager::initializeFrictionFactory() {
     delete Factory;
     throw Error;
   }
+}
+
+
+void seissol::initializers::MemoryManager::prepareFaultOutput(const std::unordered_map<std::string, double*>& FaultParams) {
+  m_DrOutput->init(FaultParams);
 }

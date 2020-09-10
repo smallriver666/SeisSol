@@ -20,33 +20,39 @@ public:
   }
 
   void init() {
+    readCoordsFromFile();
+    // findElementsContainingPoints();
+    // InitPointsIndices();
+    // ProjectPointsToFaces();
+    // FindClosestGpPoint();
+  }
 
+  void readCoordsFromFile() {
+    using namespace initializers;
+    StringsT Content = FileProcessor::getFileAsStrings(m_PickpointParams.PPFileName);
+    FileProcessor::removeEmptyLines(Content);
+
+    if (m_PickpointParams.NumOutputPoints > static_cast<int>(Content.size()))
+      throw std::runtime_error("requested num. of fault pick-points is more than the file contains");
+
+    // iterate line by line and initialize DrRecordPoints
+    for (const auto &Line: Content) {
+      std::array<real, 3> Coords{};
+      convertStringToMask(Line, Coords);
+
+      ReceiverPointT Point{};
+      for (int i = 0; i < 3; ++i) {
+        Point.Global.Values[0] = Coords[0];
+      }
+
+      m_Points.push_back(Point);
+    }
   }
 
 private:
   PickpointParamsT m_PickpointParams;
-  PointsT m_Points{};
+  ReceiverPointsT m_Points{};
   const MeshReader* m_meshReader;
 };
 
 #endif //SEISSOL_PICKPOINTOUTPUT_HPP
-
-/*
- *
-    // read provided text file if it is needed
-    if (PpParams.NumOutputPoints > 0) {
-
-      StringsT Content = FileProcessor::getFileAsStrings(PpParams.PPFileName);
-      FileProcessor::removeEmptyLines(Content);
-
-      if (PpParams.NumOutputPoints > static_cast<int>(Content.size()))
-        throw std::runtime_error("requested num. pickpoints is more that the file contains");
-
-      // iterate line by line and initialize DrRecordPoints
-      for (const auto &Line: Content) {
-        std::array<real, 3> Coords{};
-        convertStringToMask(Line, Coords);
-        PpParams.DrRecordPoints.emplace_back(Coords);
-      }
-    }
- * */
