@@ -2,8 +2,11 @@
 #define SEISSOL_DROUTOUT_DRDATATYPES_HPP
 
 #include "Kernels/precision.hpp"
+#include "Geometry/MeshDefinition.h"
 #include <vector>
 #include <array>
+#include <cassert>
+#include <limits>
 
 namespace seissol {
   namespace dr {
@@ -54,64 +57,73 @@ namespace seissol {
     }
 
 
-    struct GeoCoordsT {
-      GeoCoordsT() = default;
-      ~GeoCoordsT() = default;
-      GeoCoordsT(const GeoCoordsT& Other) {
+    struct ExtVrtxCoords {
+      ExtVrtxCoords() = default;
+      ~ExtVrtxCoords() = default;
+      ExtVrtxCoords(const ExtVrtxCoords& Other) {
         for (int i = 0; i < 3; ++i)
-          Values[i] = Other.Values[i];
+          Coords[i] = Other.Coords[i];
       }
-      GeoCoordsT& operator=(const GeoCoordsT& Other) {
+      ExtVrtxCoords& operator=(const ExtVrtxCoords& Other) {
         for (int i = 0; i < 3; ++i)
-          Values[i] = Other.Values[i];
+          Coords[i] = Other.Coords[i];
         return *this;
       }
+      ExtVrtxCoords(std::initializer_list<double> InputCoords) {
+        assert(InputCoords.size() == 3 && "ExtVrtxCoords must get initialized with 3 values");
+        auto Begin = InputCoords.begin();
+        for (int i = 0; i < 3; ++i, ++Begin)
+          Coords[i] = *Begin;
+      }
 
-      std::array<real, 3> Values = {0.0, 0.0, 0.0};
-      double& x = Values[0];
-      double& y = Values[1];
-      double& z = Values[2];
+      VrtxCoords Coords = {0.0, 0.0, 0.0};
+      double& x = Coords[0];
+      double& y = Coords[1];
+      double& z = Coords[2];
 
-      double& xi = Values[0];
-      double& eta = Values[1];
-      double& zeta = Values[2];
-    };
+      double& xi = Coords[0];
+      double& eta = Coords[1];
+      double& zeta = Coords[2];
+  };
 
 
-    struct TriangleT {
-      TriangleT() = default;
-      ~TriangleT() = default;
-      explicit TriangleT(GeoCoordsT p1, GeoCoordsT p2, GeoCoordsT p3) {
+    struct ExtTriangle {
+      ExtTriangle() = default;
+      ~ExtTriangle() = default;
+      explicit ExtTriangle(const ExtVrtxCoords& p1, const ExtVrtxCoords& p2, const ExtVrtxCoords& p3) {
         Points[0] = p1;
         Points[1] = p2;
-        Points[3] = p3;
+        Points[2] = p3;
       }
 
-      TriangleT(const TriangleT& Other) {
+      ExtTriangle(const ExtTriangle& Other) {
         for (int i = 0; i < 3; ++i)
           Points[i] = Other.Points[i];
       }
-      TriangleT& operator=(const TriangleT& Other) {
+      ExtTriangle& operator=(const ExtTriangle& Other) {
         for (int i = 0; i < 3; ++i)
           Points[i] = Other.Points[i];
         return *this;
       }
 
-      std::array<GeoCoordsT, 3> Points{};
-      GeoCoordsT& p1 = Points[0];
-      GeoCoordsT& p2 = Points[1];
-      GeoCoordsT& p3 = Points[2];
+      std::array<ExtVrtxCoords, 3> Points{};
+      ExtVrtxCoords& p1 = Points[0];
+      ExtVrtxCoords& p2 = Points[1];
+      ExtVrtxCoords& p3 = Points[2];
     };
 
 
     struct ReceiverPointT {
-      GeoCoordsT Global{};   // physical coords of a receiver
-      GeoCoordsT Referece{}; // reference coords of a receiver
-      TriangleT GlobalSubTet{};// (subtet) vertices coordinates (of a surrounding triangle)
-      int FaultFaceIndex{-1};  // Face Fault index which the receiver belongs to
-      int ElementIndex{-1};    // Element which the receiver belongs to
+      ExtVrtxCoords Global{};    // physical coords of a receiver
+      ExtVrtxCoords Referece{};  // reference coords of a receiver
+      ExtTriangle GlobalSubTet{};// (subtet) vertices coordinates (of a surrounding triangle)
+      int FaultFaceIndex{-1};    // Face Fault index which the receiver belongs to
+      int LocalFaceSideId{-1};   // Side ID of a reference element
+      int ElementIndex{-1};      // Element which the receiver belongs to
       int GlobalReceiverIndex{-1};  // receiver index of global list
       bool IsInside{};  // If a point is inside the mesh or not
+      int NearestGpIndex{-1};
+      double DistanceToNearestGp{std::numeric_limits<double>::max()};
     };
     using ReceiverPointsT = std::vector<ReceiverPointT>;
 

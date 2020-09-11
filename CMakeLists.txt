@@ -115,11 +115,23 @@ elseif (PLASTICITY_METHOD STREQUAL "nb")
   target_compile_definitions(SeisSol-lib PUBLIC USE_PLASTICITY_NB)
 endif()
 
+
+if (DYNAMIC_RUPTURE_METHOD STREQUAL "quadrature")
+  target_compile_definitions(SeisSol-lib PUBLIC DR_METHOD=0)
+elseif (DYNAMIC_RUPTURE_METHOD STREQUAL "cellaverage")
+  target_compile_definitions(SeisSol-lib PUBLIC DR_METHOD=1)
+endif()
+
 # Find appropriate compiler flags based on the target computer architecture
 # and the target compiler
 # 'get_arch_specific_flags' returns: CPU_ARCH_FLAGS
 include(cmake/cpu_arch_flags.cmake)
 get_arch_flags(${ARCH} ${CMAKE_CXX_COMPILER_ID})
+
+# force debug mode explicitly
+if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  set(CPU_ARCH_FLAGS "-g" "-O0" "${CPU_ARCH_FLAGS}")
+endif()
 
 # set hardware/compiler specific definitions and flags
 target_compile_definitions(SeisSol-lib PUBLIC ${HARDWARE_DEFINITIONS})
@@ -343,6 +355,18 @@ if (TESTING)
   target_link_libraries(test_serial_test_suite PRIVATE SeisSol-lib)
   target_include_directories(test_serial_test_suite PRIVATE ${CXXTEST_INCLUDE_DIR})
 
+
+  CXXTEST_ADD_TEST_MPI(
+          dr_tests
+          1
+          dr_tests.cpp
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/DynamicRupture/Output/Geometry.hpp
+  )
+  target_link_libraries(dr_tests PRIVATE SeisSol-lib)
+  target_compile_options(dr_tests PRIVATE "-g" "-O0")
+  target_include_directories(dr_tests PRIVATE ${CXXTEST_INCLUDE_DIR})
+
+
   CXXTEST_ADD_TEST_MPI(
           test_parallel_test_suite
           4
@@ -354,14 +378,6 @@ if (TESTING)
   target_compile_definitions(test_parallel_test_suite PRIVATE
     SEISSOL_TESTS=\"${CMAKE_CURRENT_SOURCE_DIR}/src/tests/\"
     )
-endif()
-
-
-#adrian
-if (DYNAMIC_RUPTURE_METHOD STREQUAL "quadrature")
-  target_compile_definitions(SeisSol-lib PUBLIC DR_METHOD=0)
-elseif (DYNAMIC_RUPTURE_METHOD STREQUAL "cellaverage")
-  target_compile_definitions(SeisSol-lib PUBLIC DR_METHOD=1)
 endif()
 
 # https://blog.kitware.com/static-checks-with-cmake-cdash-iwyu-clang-tidy-lwyu-cpplint-and-cppcheck/

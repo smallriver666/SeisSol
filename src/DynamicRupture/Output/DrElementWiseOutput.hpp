@@ -4,6 +4,7 @@
 #include "DrDataTypes.hpp"
 #include "FaultRefiner/FaultRefiner.hpp"
 #include "Geometry/MeshReader.h"
+#include "DrOutputAux.hpp"
 #include "Parallel/MPI.h"
 
 namespace seissol {
@@ -32,10 +33,13 @@ public:
 
   void init(const std::unordered_map<std::string, double*>& FaultParams) {
     initReveiverLocations();
+    assignNearestGaussianPoints(m_ReceiverPoints);
+    /*
     initOutputLabels();
     allocateOutputVariables();
     initOutputVariables();
     initRotationMatrices(FaultParams);
+    */
   }
 
   void initReveiverLocations() {
@@ -77,10 +81,10 @@ public:
         auto LocalFaceSideId = FaultInfo[FaceIndex].side;
 
         // init reference coordinates of the fault face
-        TriangleT ReferenceFace = getReferenceFace(LocalFaceSideId);
+        ExtTriangle ReferenceFace = getReferenceFace(LocalFaceSideId);
 
         // init global coordinates of the fault face
-        TriangleT GlobalFace = getReferenceFace(LocalFaceSideId);
+        ExtTriangle GlobalFace = getReferenceFace(LocalFaceSideId);
         for (int FaceVertexId = 0; FaceVertexId < 3; ++FaceVertexId) {
           auto ElementVertexId = getElementVertexId(LocalFaceSideId, FaceVertexId);
           auto GlobalVertexId = ElementsInfo[ElementIndex].vertices[ElementVertexId];
@@ -92,6 +96,7 @@ public:
 
         FaultRefiner->refineAndAccumulate(m_ElementwiseParams.Refinement,
                                           FaceIndex,
+                                          LocalFaceSideId,
                                           ReferenceFace,
                                           GlobalFace);
       }
@@ -193,30 +198,6 @@ public:
     */
   }
 
-  static void computeStrikeAndDipVectors(const VrtxCoords Normal, VrtxCoords Strike, VrtxCoords Dip) {
-
-    // compute normalized strike vector
-    auto StrikeInvLength = 1.0 / std::sqrt(Normal[0] * Normal[0] + Normal[1] * Normal[1]);
-    Strike[0] = Normal[1] * StrikeInvLength;
-    Strike[1] = -Normal[0] * StrikeInvLength;
-    Strike[2] = 0.0;
-
-    // compute normalized dip vector
-    Dip[0] = -1.0 * Strike[1] * Normal[2];
-    Dip[1] = Strike[0] * Normal[2];
-    Dip[2] = Strike[1] * Normal[0] - Strike[0] * Normal[1];
-    auto DipInvLength = 1.0 / std::sqrt(Dip[0] * Dip[0] + Dip[1] * Dip[1] + Dip[2] * Dip[2]);
-    Dip[0] *= DipInvLength;
-    Dip[1] *= DipInvLength;
-    Dip[2] *= DipInvLength;
-  }
-
-  std::pair<int, double> getNearestGaussianPoint(const ReceiverPointT& Point) {
-    int NearestGaussianPoint{};
-    double NearestDistance{0.0};
-
-    return std::make_pair(NearestGaussianPoint, NearestDistance);
-  }
 
   void computeBasisFunctionsAtReceiver() {
     // TODO: compute self Basis functions
@@ -233,47 +214,6 @@ public:
   }
 
 private:
-  static int getElementVertexId(int LocalSideId, int LocalFaceVertexId) {
-    // 4 - number of faces of an element
-    // 3 - number of vertices of a face
-    static int LocalVertexMap[4][3] = {{0, 2, 1},  // Local tet. vertices of tet. side I
-                                       {0, 1, 3},  // Local tet. vertices of tet. side II
-                                       {0, 3, 2},  // Local tet. vertices of tet. side III
-                                       {1, 2, 3}}; // Local tet. vertices of tet. side IV
-    return LocalVertexMap[LocalSideId][LocalFaceVertexId];
-  }
-
-  TriangleT getReferenceFace(int LocalSideId) {
-    TriangleT ReferenceFace;
-    switch (LocalSideId) {
-      case 0:
-        ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-        ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
-        ReferenceFace.p3.xi = 1.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 0.0;
-
-        break;
-      case 1:
-        ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-        ReferenceFace.p2.xi = 1.0; ReferenceFace.p2.eta = 0.0; ReferenceFace.p2.zeta = 0.0;
-        ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 1.0;
-        break;
-      case 2:
-        ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-        ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 0.0; ReferenceFace.p2.zeta = 1.0;
-        ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 1.0; ReferenceFace.p3.zeta = 0.0;
-        break;
-      case 3:
-        ReferenceFace.p1.xi = 1.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-        ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
-        ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 1.0;
-        break;
-      default:
-        throw std::runtime_error("Unknown Local Side Id. Must be 0, 1, 2 or 3");
-    }
-
-    return ReferenceFace;
-  }
-
 
   ElementwiseFaultParamsT m_ElementwiseParams;
   FaultGeomParamsT m_GeomParam;

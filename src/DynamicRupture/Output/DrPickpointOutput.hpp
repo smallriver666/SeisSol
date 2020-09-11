@@ -42,7 +42,7 @@ public:
 
       ReceiverPointT Point{};
       for (int i = 0; i < 3; ++i) {
-        Point.Global.Values[0] = Coords[0];
+        Point.Global.Coords[0] = Coords[0];
       }
 
       m_Points.push_back(Point);

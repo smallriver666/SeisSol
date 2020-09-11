@@ -40,6 +40,7 @@
 
 #include "Transformation.h"
 #include <Eigen/Dense>
+#include <cassert>
 
 void seissol::transformations::tetrahedronReferenceToGlobal( double const v0[3],
                                                              double const v1[3],
@@ -272,6 +273,40 @@ void seissol::transformations::chiTau2XiEtaZeta(unsigned face, double const chiT
       xiEtaZeta[1] = chiTauTilde[0];
       xiEtaZeta[2] = chiTauTilde[1];
       break;
+    default:
+      break;
+  }
+}
+
+void seissol::transformations::XiEtaZeta2chiTau(unsigned face, double const xiEtaZeta[3], double chiTau[2]) {
+  const double EPS = 1e-6;
+
+  switch (face) {
+    case 0: {
+      chiTau[1] = xiEtaZeta[0];
+      chiTau[0] = xiEtaZeta[1];
+      assert((std::abs(xiEtaZeta[2]) < EPS) && "reference coord is not on the 1st face");
+      break;
+    }
+    case 1: {
+      chiTau[0] = xiEtaZeta[0];
+      chiTau[1] = xiEtaZeta[2];
+      assert((std::abs(xiEtaZeta[1]) < EPS) && "reference coord is not on the 2nd face");
+      break;
+    }
+    case 2: {
+      chiTau[1] = xiEtaZeta[1];
+      chiTau[0] = xiEtaZeta[2];
+      assert((std::abs(xiEtaZeta[0]) < EPS) && "reference coord is not on the 3rd face");
+      break;
+    }
+    case 3: {
+      chiTau[0] = xiEtaZeta[1];
+      chiTau[1] = xiEtaZeta[2];
+      double Check = 1.0 - xiEtaZeta[1] - xiEtaZeta[2];
+      assert((std::abs(Check - xiEtaZeta[0]) < EPS) && "reference coord is not on the 4th face");
+      break;
+    }
     default:
       break;
   }

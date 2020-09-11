@@ -11,7 +11,7 @@ namespace seissol {
           case 2:
             return std::unique_ptr<FaultRefinerInterface>(new QuadFaultFaceRefiner);
           default:
-            throw ("Unknown refinement strategy for Fault Face Refiner");
+            throw std::runtime_error("Unknown refinement strategy for Fault Face Refiner");
         }
       }
 
