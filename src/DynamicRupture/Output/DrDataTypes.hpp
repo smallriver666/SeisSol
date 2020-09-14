@@ -127,6 +127,10 @@ namespace seissol {
     };
     using ReceiverPointsT = std::vector<ReceiverPointT>;
 
+    struct PlusMinusBasisFunctionsT {
+      std::vector<real> PlusSide;
+      std::vector<real> MinusSide;
+    };
 
     struct ConstantT {
       real P0{0.0};

@@ -3,21 +3,15 @@
 #include "Geometry/MeshTools.h"
 #include "Numerical_aux/Quadrature.h"
 #include "Numerical_aux/Transformation.h"
+#include "Numerical_aux/BasisFunction.h"
 #include <Eigen/Dense>
-#include <memory>
 #include <limits>
 
 namespace seissol {
   namespace dr {
 
     int getElementVertexId(int LocalSideId, int LocalFaceVertexId) {
-      // 4 - number of faces of an element
-      // 3 - number of vertices of a face
-      static int LocalVertexMap[4][3] = {{0, 2, 1},  // Local tet. vertices of tet. side I
-                                         {0, 1, 3},  // Local tet. vertices of tet. side II
-                                         {0, 3, 2},  // Local tet. vertices of tet. side III
-                                         {1, 2, 3}}; // Local tet. vertices of tet. side IV
-      return LocalVertexMap[LocalSideId][LocalFaceVertexId];
+      return MeshTools::FACE2NODES[LocalSideId][LocalFaceVertexId];
     }
 
 
@@ -40,8 +34,8 @@ namespace seissol {
           ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 1.0; ReferenceFace.p3.zeta = 0.0;
           break;
         case 3:
-          ReferenceFace.p1.xi = 1.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p2.xi = 0.0;
-          ReferenceFace.p1.zeta = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
+          ReferenceFace.p1.xi = 1.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
+          ReferenceFace.p1.xi = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
           ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 1.0;
           break;
         default:
@@ -51,7 +45,9 @@ namespace seissol {
       return ReferenceFace;
     }
 
+
     void computeStrikeAndDipVectors(const VrtxCoords Normal, VrtxCoords Strike, VrtxCoords Dip) {
+      // Note: equations are explained in documentation -> left-lateral-right-lateral-normal-reverse
 
       // compute normalized strike vector
       auto StrikeInvLength = 1.0 / std::sqrt(Normal[0] * Normal[0] + Normal[1] * Normal[1]);
@@ -69,6 +65,7 @@ namespace seissol {
       Dip[2] *= DipInvLength;
     }
 
+
     ExtVrtxCoords getMidTrianglePoint(const ExtTriangle& Triangle) {
       ExtVrtxCoords AvgPoint{};
       for (int Axis = 0; Axis < 3; ++Axis) {
@@ -76,6 +73,7 @@ namespace seissol {
       }
       return AvgPoint;
     }
+
 
     ExtVrtxCoords getMidPoint(const ExtVrtxCoords& p1, const ExtVrtxCoords& p2) {
       ExtVrtxCoords MidPoint{};
@@ -98,6 +96,7 @@ namespace seissol {
       seissol::quadrature::TriangleQuadrature(reshape<2>(&Points[0]), &Weights[0], PolyDegree);
       return std::make_tuple(numQuadraturePoints, Weights, Points);
     }
+
 
     double distance(const double V1[2], const double V2[2]) {
       Eigen::Vector2d Vector1(V1[0],V1[1]), Vector2(V2[0],V2[1]);
@@ -148,6 +147,7 @@ namespace seissol {
       }
     }
 
+
     void projectPointToFace(ExtVrtxCoords& Point, const ExtTriangle& Face, const VrtxCoords FaceNormal) {
       using namespace Eigen;
 
@@ -163,6 +163,45 @@ namespace seissol {
       for (int i = 0; i < 3; ++i) {
         Point.Coords[i] = TargetPoint(i);
       }
+    }
+
+    PlusMinusBasisFunctionsT getPlusMinusBasisFunctions(const VrtxCoords PointCoords,
+                                                        const VrtxCoords PlusElementCoords[4],
+                                                        const VrtxCoords MinusElementCoords[4]) {
+
+      PlusMinusBasisFunctionsT BasisFunctions{};
+      Eigen::Vector3d Point(PointCoords[0], PointCoords[1], PointCoords[2]);
+
+      {
+        auto PlusXiEtaZeta = transformations::tetrahedronGlobalToReference(PlusElementCoords[0],
+                                                                           PlusElementCoords[1],
+                                                                           PlusElementCoords[2],
+                                                                           PlusElementCoords[3],
+                                                                           Point);
+
+        basisFunction::SampledBasisFunctions<real> Sampler(CONVERGENCE_ORDER,
+                                                           PlusXiEtaZeta[0],
+                                                           PlusXiEtaZeta[1],
+                                                           PlusXiEtaZeta[2]);
+        BasisFunctions.PlusSide = std::move(Sampler.m_data);
+      }
+
+      std::vector<real> MinusBasisFunctions;
+      {
+        auto MinusXiEtaZeta = transformations::tetrahedronGlobalToReference(MinusElementCoords[0],
+                                                                            MinusElementCoords[1],
+                                                                            MinusElementCoords[2],
+                                                                            MinusElementCoords[3],
+                                                                            Point);
+
+        basisFunction::SampledBasisFunctions<real> Sampler(CONVERGENCE_ORDER,
+                                                           MinusXiEtaZeta[0],
+                                                           MinusXiEtaZeta[1],
+                                                           MinusXiEtaZeta[2]);
+        BasisFunctions.MinusSide = std::move(Sampler.m_data);
+      }
+
+      return BasisFunctions;
     }
   }
 }

@@ -303,8 +303,7 @@ void seissol::transformations::XiEtaZeta2chiTau(unsigned face, double const xiEt
     case 3: {
       chiTau[0] = xiEtaZeta[1];
       chiTau[1] = xiEtaZeta[2];
-      double Check = 1.0 - xiEtaZeta[1] - xiEtaZeta[2];
-      assert((std::abs(Check - xiEtaZeta[0]) < EPS) && "reference coord is not on the 4th face");
+      assert((std::abs(xiEtaZeta[0] + xiEtaZeta[1] + xiEtaZeta[2] - 1.0) < EPS) && "reference coord is not on the 4th face");
       break;
     }
     default:

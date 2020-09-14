@@ -108,18 +108,16 @@ VariableSubsampler<T>::VariableSubsampler(
     kNumVariables(numVariables), kNumAlignedDOF(numAlignedDOF)
 {
     // Generate cell centerpoints in the reference or unit tetrahedron.
-	Tetrahedron<T>* subCells = new Tetrahedron<T>[kSubCellsPerCell];
-        Eigen::Matrix<T, 3, 1>* additionalVertices = new Eigen::Matrix<T, 3, 1>[tetRefiner.additionalVerticesPerCell()];
+    Tetrahedron<T>* subCells = new Tetrahedron<T>[kSubCellsPerCell];
+    Eigen::Matrix<T, 3, 1>* additionalVertices = new Eigen::Matrix<T, 3, 1>[tetRefiner.additionalVerticesPerCell()];
 
-    tetRefiner.refine(Tetrahedron<T>::unitTetrahedron(), 0,
-    		subCells, additionalVertices);
+    tetRefiner.refine(Tetrahedron<T>::unitTetrahedron(), 0, subCells, additionalVertices);
 
     // Generate sampled basicfunctions
     for (unsigned int i = 0; i < kSubCellsPerCell; i++) {
         const Eigen::Matrix<T, 3, 1> pnt = subCells[i].center();
         m_BasisFunctions.push_back(
-                basisFunction::SampledBasisFunctions<T>(
-                    order, pnt(0), pnt(1), pnt(2)));
+                basisFunction::SampledBasisFunctions<T>(order, pnt(0), pnt(1), pnt(2)));
     }
 
     delete [] subCells;

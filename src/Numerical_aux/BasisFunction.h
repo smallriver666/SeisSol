@@ -119,9 +119,7 @@ public:
      * @param zeta The zeta coordinate in the reference terahedron.
      * @param xi The xi coordinate in the reference terahedron.
      */
-    SampledBasisFunctions(unsigned int order,
-			  T xi, T eta, T zeta)
-    	: m_data(basisFunctionsForOrder(order))
+    SampledBasisFunctions(unsigned int order, T xi, T eta, T zeta) : m_data(basisFunctionsForOrder(order))
     {
         BasisFunctionGenerator<T> gen(xi, eta, zeta);
 

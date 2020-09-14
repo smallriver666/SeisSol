@@ -32,8 +32,8 @@ public:
 
 
   void init(const std::unordered_map<std::string, double*>& FaultParams) {
-    initReveiverLocations();
-    assignNearestGaussianPoints(m_ReceiverPoints);
+    initReceiverLocations();
+    //assignNearestGaussianPoints(m_ReceiverPoints);
     /*
     initOutputLabels();
     allocateOutputVariables();
@@ -42,7 +42,7 @@ public:
     */
   }
 
-  void initReveiverLocations() {
+  void initReceiverLocations() {
     std::unique_ptr<FaultRefinerInterface> FaultRefiner{nullptr};
     FaultRefiner = getRefiner(m_ElementwiseParams.RefinementStrategy);
 
