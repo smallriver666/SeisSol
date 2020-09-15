@@ -106,12 +106,15 @@ public:
 		m_timestep = timestep;
 	}
 
-	void init(const unsigned int* cells, const double* vertices,
-		unsigned int nCells, unsigned int nVertices,
-		int* outputMask, const double** dataBuffer,
-		const char* outputPrefix,
-		double interval,
-    xdmfwriter::BackendType backend);
+	void init(const unsigned int* cells,
+	          const double* vertices,
+		        unsigned int nCells,
+		        unsigned int nVertices,
+		        int* outputMask,
+		        const double** dataBuffer,
+		        const char* outputPrefix,
+		        double interval,
+            xdmfwriter::BackendType backend);
 
 	/**
 	 * @return The current time step of the fault output

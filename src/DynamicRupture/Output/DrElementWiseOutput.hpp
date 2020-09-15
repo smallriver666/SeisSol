@@ -10,6 +10,7 @@
 namespace seissol {
   namespace dr {
     namespace output {
+      class Base;
       class ElementWiseOutput;
       struct FaultGeomParamsT;
     }
@@ -24,6 +25,17 @@ struct seissol::dr::output::FaultGeomParamsT {
 
 class seissol::dr::output::ElementWiseOutput {
 public:
+  friend Base;
+
+  ~ElementWiseOutput() {
+    if (m_TmpState) {
+      for (int i = 0; i < m_TotalNumScalars; ++i) {
+        delete [] m_TmpState[i];
+      }
+      delete [] m_TmpState;
+    }
+  }
+
   void setParams(const ElementwiseFaultParamsT& Params, const MeshReader* Reader) {
     m_ElementwiseParams = Params;
     m_MeshReader = Reader;
@@ -34,6 +46,16 @@ public:
   void init(const std::unordered_map<std::string, double*>& FaultParams) {
     initReceiverLocations();
     //assignNearestGaussianPoints(m_ReceiverPoints);
+    initOutputLabels();
+
+    m_TmpState = new real*[m_TotalNumScalars];
+    for (int i = 0; i < m_TotalNumScalars; ++i) {
+      m_TmpState[i] = new real[m_ReceiverPoints.size()];
+      for (int j = 0; j < (m_ReceiverPoints.size()); ++j) {
+        m_TmpState[i][j] = 0.0;
+      }
+    }
+
     /*
     initOutputLabels();
     allocateOutputVariables();
@@ -119,9 +141,9 @@ public:
 
 
     std::array<int, 12> NumScalarsPerVariable{2, 3, 1, 2, 3, 2, 1, 1, 1, 1, 1, 2};
-    int TotalNumScalars{0};
+    m_TotalNumScalars = 0;
     for (int i = 0; i < 12; ++i) {
-      TotalNumScalars += (NumScalarsPerVariable[i] * m_ElementwiseParams.OutputMask[i]);
+      m_TotalNumScalars += (NumScalarsPerVariable[i] * m_ElementwiseParams.OutputMask[i]);
     }
 
     int Counter{0};
@@ -229,6 +251,8 @@ private:
   size_t nDR_pick;
   size_t nOutPoints;
   int m_rank{-1};
+  unsigned m_TotalNumScalars{0};
+  real **m_TmpState{nullptr};
 };
 
 #endif //SEISSOL_DRELEMENTWISEOUTPUT_HPP

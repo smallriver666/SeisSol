@@ -118,6 +118,9 @@ private:
 
 	/** Fault output module */
 	writer::FaultWriter m_faultWriter;
+
+  /** Second Fault output module for c++ impl  */
+  writer::FaultWriter m_secondFaultWriter;
     
   //! Receiver writer module
   writer::ReceiverWriter m_receiverWriter;
@@ -222,6 +225,14 @@ public:
 	{
 		return m_faultWriter;
 	}
+
+  /**
+   * Get the fault writer module
+   */
+  writer::FaultWriter& secondFaultWriter()
+  {
+    return m_secondFaultWriter;
+  }
 
 	/**
 	 * Get the receiver writer module

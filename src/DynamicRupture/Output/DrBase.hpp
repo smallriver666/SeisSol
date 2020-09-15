@@ -66,11 +66,7 @@ public:
     }
   }
 
-  void init(const std::unordered_map<std::string, double*>& FaultParams) {
-    if (m_EwOutput) m_EwOutput->init(FaultParams);
-    if (m_PpOutput) m_PpOutput->init();
-  }
-
+  void init(const std::unordered_map<std::string, double*>& FaultParams);
 
   virtual void tiePointers(seissol::initializers::Layer&  layerData,
                            seissol::initializers::DynamicRupture *dynRup,

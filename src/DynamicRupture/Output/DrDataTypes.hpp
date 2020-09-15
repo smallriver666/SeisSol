@@ -47,7 +47,7 @@ namespace seissol {
 
       struct ElementwiseFaultParamsT {
         int PrintTimeInterval{2};
-        real PrintTimeIntervalSec{1.0};
+        double PrintTimeIntervalSec{1.0};
         int PrintIntervalCriterion{1};
         int MaxPickStore{50};
         std::array<bool, 12> OutputMask{true, true, true, true};
