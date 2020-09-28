@@ -28,12 +28,14 @@ public:
   friend Base;
 
   ~ElementWiseOutput() {
-    if (m_TmpState) {
-      for (int i = 0; i < m_TotalNumScalars; ++i) {
-        delete [] m_TmpState[i];
+    auto deallocateVars = [](auto& var, int) {
+      if (var.isActive) {
+        for (int dim = 0; dim < var.dim(); ++dim) {
+          delete [] var.data[dim];
+        }
       }
-      delete [] m_TmpState;
-    }
+    };
+    aux::forEach(drVars, deallocateVars);
   }
 
   void setParams(const ElementwiseFaultParamsT& Params, const MeshReader* Reader) {
@@ -46,15 +48,7 @@ public:
   void init(const std::unordered_map<std::string, double*>& FaultParams) {
     initReceiverLocations();
     //assignNearestGaussianPoints(m_ReceiverPoints);
-    initOutputLabels();
-
-    m_TmpState = new real*[m_TotalNumScalars];
-    for (int i = 0; i < m_TotalNumScalars; ++i) {
-      m_TmpState[i] = new real[m_ReceiverPoints.size()];
-      for (int j = 0; j < (m_ReceiverPoints.size()); ++j) {
-        m_TmpState[i][j] = 0.0;
-      }
-    }
+    initOutputVariables();
 
     /*
     initOutputLabels();
@@ -62,6 +56,37 @@ public:
     initOutputVariables();
     initRotationMatrices(FaultParams);
     */
+  }
+
+  void initOutputVariables() {
+    auto assignMask = [this](auto& var, int index) {
+      var.isActive = this->m_ElementwiseParams.OutputMask[index];
+    };
+    aux::forEach(drVars, assignMask);
+
+    auto allocateVariables = [this](auto& var, int) {
+      var.size = var.isActive ? this->m_ReceiverPoints.size() : 0;
+      if (var.isActive) {
+        for (int dim = 0; dim < var.dim(); ++dim)
+          var.data[dim] = new real[var.size];
+      }
+      else {
+        for (int dim = 0; dim < var.dim(); ++dim)
+          var.data[dim] = nullptr;
+      }
+    };
+    aux::forEach(drVars, allocateVariables);
+
+    real initialValue = 0.0;
+    auto initVars = [initialValue](auto& var, int) {
+      if (var.isActive) {
+        for (int dim = 0; dim < var.dim(); ++dim) {
+          for (size_t i = 0; i < var.size; ++i)
+            var[dim][i] = initialValue;
+        }
+      }
+    };
+    aux::forEach(drVars, initVars);
   }
 
   void initReceiverLocations() {
@@ -133,30 +158,6 @@ public:
     nOutPoints = m_ReceiverPoints.size();
   }
 
-
-  void initOutputLabels() {
-
-    m_Constants.resize(m_ReceiverPoints.size());
-    logInfo(m_rank) << "CPP: Pick fault output at " << m_ReceiverPoints.size() << " points in this MPI domain.";
-
-
-    std::array<int, 12> NumScalarsPerVariable{2, 3, 1, 2, 3, 2, 1, 1, 1, 1, 1, 2};
-    m_TotalNumScalars = 0;
-    for (int i = 0; i < 12; ++i) {
-      m_TotalNumScalars += (NumScalarsPerVariable[i] * m_ElementwiseParams.OutputMask[i]);
-    }
-
-    int Counter{0};
-    for (int i = 0; i < 12; ++i) {
-      for (int j = 0; j < NumScalarsPerVariable[i]; ++j) {
-        if (m_ElementwiseParams.OutputMask[i]) {
-          m_OutputLabels.push_back(Counter);
-          std::cout << "CPP:: " << Counter << std::endl;
-        }
-        ++Counter;
-      }
-    }
-  }
 
   void allocateOutputVariables() {
     std::vector<real> CurrentPick(nDR_pick);
@@ -230,10 +231,12 @@ public:
     // Compute InitialStressInFaultCS
   }
 
+  /*
   void initOutputVariables() {
     // TODO: eval_faultreceiver
     // TODO: create_fault_rotationmatrix
   }
+  */
 
 private:
 
@@ -251,8 +254,7 @@ private:
   size_t nDR_pick;
   size_t nOutPoints;
   int m_rank{-1};
-  unsigned m_TotalNumScalars{0};
-  real **m_TmpState{nullptr};
+  DrVarsT drVars;
 };
 
 #endif //SEISSOL_DRELEMENTWISEOUTPUT_HPP

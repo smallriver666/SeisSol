@@ -1,5 +1,5 @@
-#ifndef SEISSOL_GEOMETRY_HPP
-#define SEISSOL_GEOMETRY_HPP
+#ifndef SEISSOL_GEOMETRY_T_H
+#define SEISSOL_GEOMETRY_T_H
 
 #include <cxxtest/TestSuite.h>
 #include "DynamicRupture/Output/DrOutputAux.hpp"
@@ -292,4 +292,4 @@ public:
   }
 };
 
-#endif //SEISSOL_GEOMETRY_HPP
+#endif //SEISSOL_GEOMETRY_T_H

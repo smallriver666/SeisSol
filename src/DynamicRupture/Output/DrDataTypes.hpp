@@ -5,12 +5,49 @@
 #include "Geometry/MeshDefinition.h"
 #include <vector>
 #include <array>
+#include <tuple>
 #include <cassert>
 #include <limits>
 
 namespace seissol {
   namespace dr {
     namespace output {
+
+      template<int DIM>
+      struct VarT {
+        constexpr int dim() {return DIM;}
+        real* operator[](int index) {
+          assert(index < DIM && "access is out of the bounds");
+          return data[index];
+        }
+        std::array<real*, DIM> data = {nullptr};
+        bool isActive{false};
+        size_t size;
+      };
+
+      using Var1D = VarT<1>;
+      using Var2D = VarT<2>;
+      using Var3D = VarT<3>;
+      using DrVarsT = std::tuple<Var2D, Var3D, Var1D, Var2D, Var3D, Var2D, Var1D, Var1D, Var1D, Var1D, Var1D, Var2D>;
+
+      enum DirectionID {STRIKE = 0, DIP = 1, NORMAL = 2};
+      enum ThermoID {PRESSURE = 0, TEMPERATURE = 1};
+      enum ParamID {FUNCTION = 0, STATE=1};
+
+      enum VariableID {SlipRate = 0,
+                       TransientShierStress,
+                       NormalVelocity,
+                       FunctionAndState,
+                       TotalStresses,
+                       Slip,
+                       RuptureVelocity,
+                       AbsoluteSlip,
+                       PeakSlipsRate,
+                       RuptureTime,
+                       Ds,
+                       Thermo,
+                       Size};
+
       enum class OutputType : int {None = 0,
                                    AtPickpoint = 3,
                                    Elementwise = 4,
@@ -38,7 +75,7 @@ namespace seissol {
 
 
       struct PickpointParamsT {
-        std::array<bool, 12> OutputMask{true, true, true}; // the rest is false by default
+        std::array<bool, std::tuple_size<DrVarsT>::value> OutputMask{true, true, true}; // the rest is false by default
         int PrintTimeInterval{1};
         int NumOutputPoints{0};
         std::string PPFileName{};
@@ -50,7 +87,7 @@ namespace seissol {
         double PrintTimeIntervalSec{1.0};
         int PrintIntervalCriterion{1};
         int MaxPickStore{50};
-        std::array<bool, 12> OutputMask{true, true, true, true};
+        std::array<bool, std::tuple_size<DrVarsT>::value> OutputMask{true, true, true, true};
         int RefinementStrategy{2};
         int Refinement{2};
       };

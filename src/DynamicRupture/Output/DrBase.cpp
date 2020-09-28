@@ -60,18 +60,31 @@ void seissol::dr::output::Base::init(const std::unordered_map<std::string, doubl
     double printTime = m_EwOutput->m_ElementwiseParams.PrintTimeIntervalSec;
     auto backendType = seissol::writer::backendType(m_GeneralParams.XdmfWriterBackend.data());
 
-    seissol::SeisSol::main.secondFaultWriter().init(cellConnectivity.data(),
+   std::vector<real*> dataPointers;
+   auto recordPointers = [&dataPointers](auto& var, int) {
+     if (var.isActive) {
+       for (int dim = 0; dim < var.dim(); ++dim)
+        dataPointers.push_back(var.data[dim]);
+     }
+   };
+
+   aux::forEach(m_EwOutput->drVars, recordPointers);
+
+   seissol::SeisSol::main.secondFaultWriter().init(cellConnectivity.data(),
                                                     vertices.data(),
                                                     static_cast<unsigned int>(ReceiverPoints.size()),
                                                     static_cast<unsigned int>(3 * ReceiverPoints.size()),
                                                     &intMask[0],
-                                                    const_cast<const real**>(m_EwOutput->m_TmpState),
+                                                    const_cast<const real**>(dataPointers.data()),
                                                     NewFaultFilePrefix.data(),
                                                     printTime,
                                                     backendType);
 
-    for (size_t i = 0; i < ReceiverPoints.size(); ++i) {
-      m_EwOutput->m_TmpState[5][i] = 1.0;
+    auto& slipRate = std::get<VariableID::SlipRate>(m_EwOutput->drVars);
+    for (int dim = 0; dim < slipRate.dim(); ++dim) {
+      for (size_t element = 0; element < slipRate.size; ++element) {
+        slipRate[dim][element] = 100.0;
+      }
     }
 
     seissol::SeisSol::main.secondFaultWriter().write(1.0);
