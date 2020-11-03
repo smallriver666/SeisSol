@@ -29,88 +29,88 @@ public:
     // Given a reference triangle in the first octant
     // TargetPoint - intersection of a line (which starts from the origin and goes along [1,1,1] vector)
     // and the inclined face (4th face)
-    ExtVrtxCoords TargetPoint{1.0/3.0, 1.0/3.0, 1.0/3.0};
+    ExtVrtxCoords targetPoint{1.0/3.0, 1.0/3.0, 1.0/3.0};
 
     // 4th face
-    ExtTriangle Face(ExtVrtxCoords{1.0, 0.0, 0.0},
+    ExtTriangle face(ExtVrtxCoords{1.0, 0.0, 0.0},
                      ExtVrtxCoords{0.0, 1.0, 0.0},
                      ExtVrtxCoords{0.0, 0.0, 1.0});
 
     const double EPS = 1e-6;
     {
-      ExtVrtxCoords TestPoint{0.0, 0.0, 0.0};
-      VrtxCoords NormalDirection{1.0, 1.0, 1.0};
+      ExtVrtxCoords testPoint{0.0, 0.0, 0.0};
+      VrtxCoords normalDirection{1.0, 1.0, 1.0};
 
-      projectPointToFace(TestPoint, Face, NormalDirection);
+      projectPointToFace(testPoint, face, normalDirection);
 
 
-      TS_ASSERT_DELTA(TestPoint.x, TargetPoint.x, EPS);
-      TS_ASSERT_DELTA(TestPoint.y, TargetPoint.y, EPS);
-      TS_ASSERT_DELTA(TestPoint.z, TargetPoint.z, EPS);
+      TS_ASSERT_DELTA(testPoint.x, targetPoint.x, EPS);
+      TS_ASSERT_DELTA(testPoint.y, targetPoint.y, EPS);
+      TS_ASSERT_DELTA(testPoint.z, targetPoint.z, EPS);
 
     }
     {
-      ExtVrtxCoords TestPoint{1.0, 1.0, 1.0};
-      VrtxCoords NormalDirection{-1.0, -1.0, -1.0};
+      ExtVrtxCoords testPoint{1.0, 1.0, 1.0};
+      VrtxCoords normalDirection{-1.0, -1.0, -1.0};
 
-      projectPointToFace(TestPoint, Face, NormalDirection);
+      projectPointToFace(testPoint, face, normalDirection);
 
-      TS_ASSERT_DELTA(TestPoint.x, TargetPoint.x, EPS);
-      TS_ASSERT_DELTA(TestPoint.y, TargetPoint.y, EPS);
-      TS_ASSERT_DELTA(TestPoint.z, TargetPoint.z, EPS);
+      TS_ASSERT_DELTA(testPoint.x, targetPoint.x, EPS);
+      TS_ASSERT_DELTA(testPoint.y, targetPoint.y, EPS);
+      TS_ASSERT_DELTA(testPoint.z, targetPoint.z, EPS);
     }
   }
 
 
   void testClosestPoint() {
-    double TargetPoint[2] = {-0.25, -0.25};
-    double FacePoints[4][2] = {{1.0, 1.0}, {-1.0, 1.0}, {-1.0, -1.0}, {1.0, -1.0}};
+    double targetPoint[2] = {-0.25, -0.25};
+    double facePoints[4][2] = {{1.0, 1.0}, {-1.0, 1.0}, {-1.0, -1.0}, {1.0, -1.0}};
 
-    int TestPointId{-1};
-    double TestDistance{-1.0};
-    std::tie(TestPointId, TestDistance) = getNearestFacePoint(TargetPoint, FacePoints, 4);
+    int testPointId{-1};
+    double testDistance{-1.0};
+    std::tie(testPointId, testDistance) = getNearestFacePoint(targetPoint, facePoints, 4);
 
     const  double EPS = 1e-6;
-    TS_ASSERT_EQUALS(TestPointId, 2);
-    TS_ASSERT_DELTA(TestDistance, std::sqrt(2 * 0.75 * 0.75), EPS);
+    TS_ASSERT_EQUALS(testPointId, 2);
+    TS_ASSERT_DELTA(testDistance, std::sqrt(2 * 0.75 * 0.75), EPS);
   }
 
 
   void testMiddlePoint() {
-    ExtVrtxCoords Point1{1.0, 2.0, 3.0};
-    ExtVrtxCoords Point2{-3.0, -2.0, -1.0};
+    ExtVrtxCoords point1{1.0, 2.0, 3.0};
+    ExtVrtxCoords point2{-3.0, -2.0, -1.0};
 
-    auto TestMiddle = getMidPoint(Point1, Point2);
+    auto testMiddle = getMidPoint(point1, point2);
 
     const  double EPS = 1e-6;
-    TS_ASSERT_DELTA(TestMiddle.x, -1.0, EPS);
-    TS_ASSERT_DELTA(TestMiddle.y, 0.0, EPS);
-    TS_ASSERT_DELTA(TestMiddle.z, 1.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.x, -1.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.y, 0.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.z, 1.0, EPS);
   }
 
 
   void testMidTrianglePoint() {
-    ExtVrtxCoords Point1{0.5, 0.0, 2.0};
-    ExtVrtxCoords Point2{-0.5, 0.0, 3.0};
-    ExtVrtxCoords Point3{3.0, 1.0, -2.0};
-    ExtTriangle Triangle(Point1, Point2, Point3);
+    ExtVrtxCoords point1{0.5, 0.0, 2.0};
+    ExtVrtxCoords point2{-0.5, 0.0, 3.0};
+    ExtVrtxCoords point3{3.0, 1.0, -2.0};
+    ExtTriangle triangle(point1, point2, point3);
 
-    auto TestMiddle = getMidTrianglePoint(Triangle);
+    auto testMiddle = getMidTrianglePoint(triangle);
 
     const  double EPS = 1e-6;
-    TS_ASSERT_DELTA(TestMiddle.x, 1.0, EPS);
-    TS_ASSERT_DELTA(TestMiddle.y, 1 / 3.0, EPS);
-    TS_ASSERT_DELTA(TestMiddle.z, 1.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.x, 1.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.y, 1 / 3.0, EPS);
+    TS_ASSERT_DELTA(testMiddle.z, 1.0, EPS);
   }
 
 
   void testTriangleQuadraturePoints() {
-    std::shared_ptr<double []> Weights = nullptr;
-    std::shared_ptr<double []> PointsData = nullptr;
-    unsigned NumPoints{};
+    std::shared_ptr<double []> weights = nullptr;
+    std::shared_ptr<double []> pointsData = nullptr;
+    unsigned numPoints{};
 
     // Coordinates are taken from the Fortran implementation
-    double ChiFortran[] = {0.94373743946307787,0.94373743946307787,0.94373743946307787,0.94373743946307787,
+    double chiFortran[] = {0.94373743946307787,0.94373743946307787,0.94373743946307787,0.94373743946307787,
                            0.94373743946307787,0.94373743946307787,0.94373743946307787,0.81975930826310761,
                            0.81975930826310761,0.81975930826310761,0.81975930826310761,0.81975930826310761,
                            0.81975930826310761,0.81975930826310761,0.64737528288683033,0.64737528288683033,
@@ -124,7 +124,7 @@ public:
                            2.2479386438712501E-002,2.2479386438712501E-002,2.2479386438712501E-002,
                            2.2479386438712501E-002, 2.2479386438712501E-002};
 
-    double TauFortran[] = {5.4830900955589179E-002,4.8991501878361855E-002,3.9548223967454631E-002,
+    double tauFortran[] = {5.4830900955589179E-002,4.8991501878361855E-002,3.9548223967454631E-002,
                            2.8131280268461067E-002,1.6714336569467501E-002,7.2710586585602805E-003,
                            1.4316595813329493E-003,0.17565427919525450,0.15694739278690259,0.12669525127960912,
                            9.0120345868446194E-002,5.3545440457283260E-002,2.3293298949989799E-002,
@@ -138,83 +138,83 @@ public:
                            2.2527915615663658E-002,0.95264658118522672,0.85119131654161828,0.68712130747329714,
                            0.48876030678064375,0.29039930608799031,0.12632929701966925,2.4874032376060777E-002};
 
-    std::tie(NumPoints, Weights, PointsData) = generateTriangleQuadrature(7);
-    double (*TestTrianglePoints)[2] = reshape<2>(&PointsData[0]);
+    std::tie(numPoints, weights, pointsData) = generateTriangleQuadrature(7);
+    double (*testTrianglePoints)[2] = reshape<2>(&pointsData[0]);
 
     const  double EPS = 1e-6;
-    for (unsigned i = 0; i < NumPoints; ++i) {
-      TS_ASSERT_DELTA(TestTrianglePoints[i][0], ChiFortran[i], EPS);
-      TS_ASSERT_DELTA(TestTrianglePoints[i][1], TauFortran[i], EPS);
+    for (unsigned i = 0; i < numPoints; ++i) {
+      TS_ASSERT_DELTA(testTrianglePoints[i][0], chiFortran[i], EPS);
+      TS_ASSERT_DELTA(testTrianglePoints[i][1], tauFortran[i], EPS);
     }
   }
 
   void testStrikeAndDipVectors() {
-    VrtxCoords TestNormal{-1.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0)};
-    VrtxCoords TestStrike{0.0, 0.0, 0.0};
-    VrtxCoords TestDip{0.0, 0.0, 0.0};
-    computeStrikeAndDipVectors(TestNormal, TestStrike, TestDip);
+    VrtxCoords testNormal{-1.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0), 1.0 / std::sqrt(3.0)};
+    VrtxCoords testStrike{0.0, 0.0, 0.0};
+    VrtxCoords testDip{0.0, 0.0, 0.0};
+    computeStrikeAndDipVectors(testNormal, testStrike, testDip);
 
     // compute expected Strike results
     Eigen::Vector3d e3(0.0, 0.0, -1.0);
-    Eigen::Vector3d Normal(TestNormal[0], TestNormal[1], TestNormal[2]);
-    Eigen::Vector3d ResultStrike = e3.cross(Normal).normalized();
+    Eigen::Vector3d normal(testNormal[0], testNormal[1], testNormal[2]);
+    Eigen::Vector3d resultStrike = e3.cross(normal).normalized();
 
 
     const  double EPS = 1e-6;
     for (unsigned i = 0; i < 3; ++i) {
-      TS_ASSERT_DELTA(TestStrike[i], ResultStrike(i), EPS);
+      TS_ASSERT_DELTA(testStrike[i], resultStrike(i), EPS);
     }
     // compute expected Dip results
-    Eigen::Vector3d ResultDip = Normal.cross(ResultStrike);
+    Eigen::Vector3d resultDip = normal.cross(resultStrike);
     for (unsigned i = 0; i < 3; ++i) {
-      TS_ASSERT_DELTA(TestDip[i], ResultDip(i), EPS);
+      TS_ASSERT_DELTA(testDip[i], resultDip(i), EPS);
     }
   }
 
 
   void testXiEtaZeta2chiTau() {
     const  double EPS = 1e-6;
-    double TestChiTau[2] = {0.0, 0.0};
+    double testChiTau[2] = {0.0, 0.0};
     {
-      unsigned Face = 0;
+      unsigned face = 0;
       VrtxCoords xiEtaZeta{0.25, 0.1, 0.0};
-      transformations::XiEtaZeta2chiTau(Face, xiEtaZeta, TestChiTau);
-      TS_ASSERT_DELTA(TestChiTau[0], 0.1, EPS);
-      TS_ASSERT_DELTA(TestChiTau[1], 0.25, EPS);
+      transformations::XiEtaZeta2chiTau(face, xiEtaZeta, testChiTau);
+      TS_ASSERT_DELTA(testChiTau[0], 0.1, EPS);
+      TS_ASSERT_DELTA(testChiTau[1], 0.25, EPS);
     }
     {
-      unsigned Face = 1;
+      unsigned face = 1;
       VrtxCoords xiEtaZeta{0.1, 0.0, 0.25};
-      transformations::XiEtaZeta2chiTau(Face, xiEtaZeta, TestChiTau);
-      TS_ASSERT_DELTA(TestChiTau[0], 0.1, EPS);
-      TS_ASSERT_DELTA(TestChiTau[1], 0.25, EPS);
+      transformations::XiEtaZeta2chiTau(face, xiEtaZeta, testChiTau);
+      TS_ASSERT_DELTA(testChiTau[0], 0.1, EPS);
+      TS_ASSERT_DELTA(testChiTau[1], 0.25, EPS);
     }
     {
-      unsigned Face = 2;
+      unsigned face = 2;
       VrtxCoords xiEtaZeta{0.0, 0.1, 0.25};
-      transformations::XiEtaZeta2chiTau(Face, xiEtaZeta, TestChiTau);
-      TS_ASSERT_DELTA(TestChiTau[0], 0.25, EPS);
-      TS_ASSERT_DELTA(TestChiTau[1], 0.1, EPS);
+      transformations::XiEtaZeta2chiTau(face, xiEtaZeta, testChiTau);
+      TS_ASSERT_DELTA(testChiTau[0], 0.25, EPS);
+      TS_ASSERT_DELTA(testChiTau[1], 0.1, EPS);
     }
     {
-      unsigned Face = 3;
+      unsigned face = 3;
       VrtxCoords xiEtaZeta{1/3.0, 1/3.0, 1/3.0}; // center of the 4th face (triangle in 3D space)
-      transformations::XiEtaZeta2chiTau(Face, xiEtaZeta, TestChiTau);
-      TS_ASSERT_DELTA(TestChiTau[0], 1 / 3.0, EPS);
-      TS_ASSERT_DELTA(TestChiTau[1], 1 / 3.0, EPS);
+      transformations::XiEtaZeta2chiTau(face, xiEtaZeta, testChiTau);
+      TS_ASSERT_DELTA(testChiTau[0], 1 / 3.0, EPS);
+      TS_ASSERT_DELTA(testChiTau[1], 1 / 3.0, EPS);
     }
     {
-      unsigned Face = 3;
+      unsigned face = 3;
       ExtVrtxCoords xiEtaZeta{0.0, -0.15, 0.15};
-      ExtTriangle FourthFace(ExtVrtxCoords{1.0, 0.0, 0.0},
+      ExtTriangle fourthFace(ExtVrtxCoords{1.0, 0.0, 0.0},
                              ExtVrtxCoords{0.0, 1.0, 0.0},
                              ExtVrtxCoords{0.0, 0.0, 1.0});
-      VrtxCoords NormalDirection{1.0, 1.0, 1.0};
-      projectPointToFace(xiEtaZeta, FourthFace, NormalDirection);
+      VrtxCoords normalDirection{1.0, 1.0, 1.0};
+      projectPointToFace(xiEtaZeta, fourthFace, normalDirection);
 
-      transformations::XiEtaZeta2chiTau(Face, xiEtaZeta.Coords, TestChiTau);
-      TS_ASSERT_DELTA(TestChiTau[0], xiEtaZeta.eta, EPS);
-      TS_ASSERT_DELTA(TestChiTau[1], xiEtaZeta.zeta, EPS);
+      transformations::XiEtaZeta2chiTau(face, xiEtaZeta.coords, testChiTau);
+      TS_ASSERT_DELTA(testChiTau[0], xiEtaZeta.eta, EPS);
+      TS_ASSERT_DELTA(testChiTau[1], xiEtaZeta.zeta, EPS);
 
     }
   }
@@ -222,31 +222,31 @@ public:
 
   void testBasisFunctions() {
 
-    VrtxCoords Point{0.25, 0.25, 0.0};
+    VrtxCoords point{0.25, 0.25, 0.0};
 
     // placing two elements in such a way that basis functions on both sides end up being the same
-    VrtxCoords PlusElementCoords[4]{{2.0, 0.0, 0.0},
+    VrtxCoords plusElementCoords[4]{{2.0, 0.0, 0.0},
                                     {0.0, 2.0, 0.0},
                                     {0.0, 0.0, 0.0},
                                     {0.0, 0.0, 2.0}};
 
-    VrtxCoords MinusElementCoords[4]{{2.0, 0.0, 0.0},
+    VrtxCoords minusElementCoords[4]{{2.0, 0.0, 0.0},
                                      {0.0, 2.0, 0.0},
                                      {0.0, 0.0, 0.0},
                                      {0.0, 0.0, -2.0}};
 
-    auto BasisFunctions = getPlusMinusBasisFunctions(Point, PlusElementCoords, MinusElementCoords);
+    auto basisFunctions = getPlusMinusBasisFunctions(point, plusElementCoords, minusElementCoords);
 
     const  double EPS = 1e-6;
-    for (unsigned i = 0; i < BasisFunctions.PlusSide.size(); ++i) {
-      TS_ASSERT_DELTA(BasisFunctions.PlusSide[i], BasisFunctions.MinusSide[i], EPS);
+    for (unsigned i = 0; i < basisFunctions.plusSide.size(); ++i) {
+      TS_ASSERT_DELTA(basisFunctions.plusSide[i], basisFunctions.minusSide[i], EPS);
     }
   }
 
 
   void testIsElementInside() {
 
-    Eigen::Vector3d Points[3] = {{0.25, 0.25, 0.25},
+    Eigen::Vector3d points[3] = {{0.25, 0.25, 0.25},
                                  {0.5, 0.5, 0.5},
                                  {0.75, 0.75, 0.1}};
     unsigned numPoints = 3;
@@ -255,29 +255,29 @@ public:
                           std::numeric_limits<unsigned>::max(),
                           std::numeric_limits<unsigned>::max()};
 
-    std::vector<Vertex> Vertices;
-    Vertices.push_back({{0.0, 0.0, 0.0}, {0}});
-    Vertices.push_back({{1.0, 0.0, 0.0}, {0, 1}});
-    Vertices.push_back({{0.0, 1.0, 0.0}, {0, 1}});
-    Vertices.push_back({{0.0, 0.0, 1.0}, {0}});
-    Vertices.push_back({{1.0, 1.0, 0.0}, {1}});
-    Vertices.push_back({{1.0, 1.0, 1.0}, {1}});
+    std::vector<Vertex> vertices;
+    vertices.push_back({{0.0, 0.0, 0.0}, {0}});
+    vertices.push_back({{1.0, 0.0, 0.0}, {0, 1}});
+    vertices.push_back({{0.0, 1.0, 0.0}, {0, 1}});
+    vertices.push_back({{0.0, 0.0, 1.0}, {0}});
+    vertices.push_back({{1.0, 1.0, 0.0}, {1}});
+    vertices.push_back({{1.0, 1.0, 1.0}, {1}});
 
-    std::vector<Element> Elements;
-    Element E1;
-    E1.localId = 0;
-    E1.vertices[0] = 0; E1.vertices[1] = 1; E1.vertices[2] = 2; E1.vertices[3] = 3;
-    Elements.push_back(E1);
+    std::vector<Element> elements;
+    Element e1;
+    e1.localId = 0;
+    e1.vertices[0] = 0; e1.vertices[1] = 1; e1.vertices[2] = 2; e1.vertices[3] = 3;
+    elements.push_back(e1);
 
-    Element E2;
-    E2.localId = 1;
-    E2.vertices[0] = 1; E2.vertices[1] = 4; E2.vertices[2] = 2; E2.vertices[3] = 5;
-    Elements.push_back(E2);
+    Element e2;
+    e2.localId = 1;
+    e2.vertices[0] = 1; e2.vertices[1] = 4; e2.vertices[2] = 2; e2.vertices[3] = 5;
+    elements.push_back(e2);
 
 
-    initializers::findMeshIds(Points,
-                              Vertices,
-                              Elements,
+    initializers::findMeshIds(points,
+                              vertices,
+                              elements,
                               numPoints,
                               contained,
                               meshId);

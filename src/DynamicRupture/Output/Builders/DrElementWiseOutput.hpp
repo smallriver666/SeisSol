@@ -18,9 +18,9 @@ namespace seissol {
 }
 
 struct seissol::dr::output::FaultGeomParamsT {
-  int NumSubTriangles{};
-  int NumSubElements{};
-  size_t NumSides{};
+  int numSubTriangles{};
+  int numSubElements{};
+  size_t numSides{};
 };
 
 class seissol::dr::output::ElementWiseOutput {
@@ -29,25 +29,21 @@ public:
 
   ~ElementWiseOutput() {
     auto deallocateVars = [](auto& var, int) {
-      if (var.isActive) {
-        for (int dim = 0; dim < var.dim(); ++dim) {
-          delete [] var.data[dim];
-        }
-      }
+      var.releaseData();
     };
     aux::forEach(drVars, deallocateVars);
   }
 
-  void setParams(const ElementwiseFaultParamsT& Params, const MeshReader* Reader) {
-    m_ElementwiseParams = Params;
-    m_MeshReader = Reader;
-    const int m_rank = MPI::mpi.rank();
+  void setParams(const ElementwiseFaultParamsT& params, const MeshReader* reader) {
+    elementwiseParams = params;
+    meshReader = reader;
+    const int localRank = MPI::mpi.rank();
   }
 
 
-  void init(const std::unordered_map<std::string, double*>& FaultParams) {
+  void init(const std::unordered_map<std::string, double*>& faultParams) {
     initReceiverLocations();
-    //assignNearestGaussianPoints(m_ReceiverPoints);
+    //assignNearestGaussianPoints(receiverPoints);
     initOutputVariables();
 
     /*
@@ -59,12 +55,12 @@ public:
 
   void initOutputVariables() {
     auto assignMask = [this](auto& var, int index) {
-      var.isActive = this->m_ElementwiseParams.OutputMask[index];
+      var.isActive = this->elementwiseParams.outputMask[index];
     };
     aux::forEach(drVars, assignMask);
 
     auto allocateVariables = [this](auto& var, int) {
-      var.size = var.isActive ? this->m_ReceiverPoints.size() : 0;
+      var.size = var.isActive ? this->receiverPoints.size() : 0;
       if (var.isActive) {
         for (int dim = 0; dim < var.dim(); ++dim)
           var.data[dim] = new real[var.size];
@@ -89,82 +85,82 @@ public:
   }
 
   void initReceiverLocations() {
-    std::unique_ptr<FaultRefinerInterface> FaultRefiner{nullptr};
-    FaultRefiner = getRefiner(m_ElementwiseParams.RefinementStrategy);
+    std::unique_ptr<FaultRefinerInterface> faultRefiner{nullptr};
+    faultRefiner = getRefiner(elementwiseParams.refinementStrategy);
 
-    m_GeomParam.NumSides = m_MeshReader->getFault().size();
-    m_GeomParam.NumSubTriangles = FaultRefiner->getNumSubTriangles();
-    m_GeomParam.NumSubElements = std::pow(m_GeomParam.NumSubTriangles, m_ElementwiseParams.Refinement);
-    //m_Points.resize(m_GeomParam.TotalNumReceivers);
+    geomParam.numSides = meshReader->getFault().size();
+    geomParam.numSubTriangles = faultRefiner->getNumSubTriangles();
+    geomParam.numSubElements = std::pow(geomParam.numSubTriangles, elementwiseParams.refinement);
+    //m_Points.resize(geomParam.TotalNumReceivers);
 
 
-    logInfo(m_rank) << "CPP: Initialising Fault output. Refinement strategy: "
-                  << m_ElementwiseParams.RefinementStrategy
+    logInfo(localRank) << "CPP: Initialising Fault output. Refinement strategy: "
+                    << elementwiseParams.refinementStrategy
                   << " Number of sub-triangles: "
-                  << m_GeomParam.NumSubTriangles;
+                  << geomParam.numSubTriangles;
 
 
     // get arrays of elements and vertices from the mesher
-    const auto &FaultInfo = m_MeshReader->getFault();
-    const auto &ElementsInfo = m_MeshReader->getElements();
-    const auto &VerticesInfo = m_MeshReader->getVertices();
+    const auto &faultInfo = meshReader->getFault();
+    const auto &elementsInfo = meshReader->getElements();
+    const auto &verticesInfo = meshReader->getVertices();
 
 
     // iterate through each fault side
-    for (size_t FaceIndex = 0; FaceIndex < m_GeomParam.NumSides; ++FaceIndex) {
+    for (size_t faceIndex = 0; faceIndex < geomParam.numSides; ++faceIndex) {
 
       // get a Global Element ID for the current fault face
-      auto ElementIndex = FaultInfo[FaceIndex].element;
-      if (ElementIndex > 0) {
+      auto elementIndex = faultInfo[faceIndex].element;
+      if (elementIndex > 0) {
 
         // store coords of vertices of the current ELEMENT
-        std::array<const double *, 4> ElementVerticesCoords{};
+        std::array<const double *, 4> elementVerticesCoords{};
         for (int ElementVertexId = 0; ElementVertexId < 4; ++ElementVertexId) {
-          auto GlobalVertexId = ElementsInfo[ElementIndex].vertices[ElementVertexId];
-          ElementVerticesCoords[ElementVertexId] = VerticesInfo[GlobalVertexId].coords;
+          auto globalVertexId = elementsInfo[elementIndex].vertices[ElementVertexId];
+          elementVerticesCoords[ElementVertexId] = verticesInfo[globalVertexId].coords;
         }
 
-        auto LocalFaceSideId = FaultInfo[FaceIndex].side;
+        auto localFaceSideId = faultInfo[faceIndex].side;
 
         // init reference coordinates of the fault face
-        ExtTriangle ReferenceFace = getReferenceFace(LocalFaceSideId);
+        ExtTriangle referenceFace = getReferenceFace(localFaceSideId);
 
         // init global coordinates of the fault face
-        ExtTriangle GlobalFace = getReferenceFace(LocalFaceSideId);
-        for (int FaceVertexId = 0; FaceVertexId < 3; ++FaceVertexId) {
-          auto ElementVertexId = getElementVertexId(LocalFaceSideId, FaceVertexId);
-          auto GlobalVertexId = ElementsInfo[ElementIndex].vertices[ElementVertexId];
+        ExtTriangle globalFace = getReferenceFace(localFaceSideId);
+        for (int faceVertexId = 0; faceVertexId < 3; ++faceVertexId) {
+          auto elementVertexId = getElementVertexId(localFaceSideId, faceVertexId);
+          auto globalVertexId = elementsInfo[elementIndex].vertices[elementVertexId];
 
-          GlobalFace.Points[FaceVertexId].x = VerticesInfo[GlobalVertexId].coords[0];
-          GlobalFace.Points[FaceVertexId].y = VerticesInfo[GlobalVertexId].coords[1];
-          GlobalFace.Points[FaceVertexId].z = VerticesInfo[GlobalVertexId].coords[2];
+          globalFace.points[faceVertexId].x = verticesInfo[globalVertexId].coords[0];
+          globalFace.points[faceVertexId].y = verticesInfo[globalVertexId].coords[1];
+          globalFace.points[faceVertexId].z = verticesInfo[globalVertexId].coords[2];
         }
 
-        FaultRefiner->refineAndAccumulate(m_ElementwiseParams.Refinement,
-                                          FaceIndex,
-                                          LocalFaceSideId,
-                                          ReferenceFace,
-                                          GlobalFace);
+        faultRefiner->refineAndAccumulate(elementwiseParams.refinement,
+                                          faceIndex,
+                                          localFaceSideId,
+                                          referenceFace,
+                                          globalFace);
       }
     }
 
     // retrieve all receivers from a fault face refiner
-    m_ReceiverPoints = FaultRefiner->moveAllReceiverPoints();
-    FaultRefiner.reset(nullptr);
+    receiverPoints = faultRefiner->moveAllReceiverPoints();
+    faultRefiner.reset(nullptr);
 
-    DR_pick_output = !m_ReceiverPoints.empty();
-    nDR_pick = m_ReceiverPoints.size();
-    nOutPoints = m_ReceiverPoints.size();
+    isDrPickOutput = !receiverPoints.empty();
+    nDrPick = receiverPoints.size();
+    nOutPoints = receiverPoints.size();
   }
 
 
   void allocateOutputVariables() {
-    std::vector<real> CurrentPick(nDR_pick);
-    std::vector<real> TmpTime(m_ElementwiseParams.MaxPickStore);
+    std::vector<real> currentPick(nDrPick);
+    std::vector<real> tmpTime(elementwiseParams.maxPickStore);
     // std::vector<real> TmpState;
     // OutVal
-    std::vector<real> RotationMatrix(nDR_pick / m_GeomParam.NumSubTriangles, 0);
-    std::vector<ConstantT> Constanta(nDR_pick);
+    std::vector<real> rotationMatrix(nDrPick / geomParam.numSubTriangles, 0);
+    std::vector<ConstantT> constant(nDrPick);
 
     // TODO: alloc DynRup_Constants
     // TODO: alloc DynRup_Constants_GlobInd
@@ -176,39 +172,29 @@ public:
 
   }
 
-  void initRotationMatrices(const std::unordered_map<std::string, double*>& FaultParams) {
+  void initRotationMatrices(const std::unordered_map<std::string, double*>& faultParams) {
     using namespace seissol::transformations;
     using RotationMatrixViewT = yateto::DenseTensorView<2, double, unsigned>;
 
     // allocate Rotation Matrices
     // Note: several receiver can share the same rotation matrix
-    m_RotationMatrices.resize(m_GeomParam.NumSides);
+    m_RotationMatrices.resize(geomParam.numSides);
 
     // init Rotation Matrices
-    const auto &FaultInfo = m_MeshReader->getFault();
-    for (size_t Index = 0; Index < m_GeomParam.NumSides; ++Index) {
-      const auto FaceNormal = FaultInfo[Index].normal;
-      VrtxCoords Strike = {0.0, 0.0, 0.0};
-      VrtxCoords Dip = {0.0, 0.0, 0.0};
+    const auto &faultInfo = meshReader->getFault();
+    for (size_t index = 0; index < geomParam.numSides; ++index) {
+      const auto faceNormal = faultInfo[index].normal;
+      VrtxCoords strike = {0.0, 0.0, 0.0};
+      VrtxCoords dip = {0.0, 0.0, 0.0};
 
-      computeStrikeAndDipVectors(FaceNormal, Strike, Dip);
+      computeStrikeAndDipVectors(faceNormal, strike, dip);
 
-      std::vector<real> RotationMatrix(36, 0.0);
-      RotationMatrixViewT RotationMatrixView(const_cast<real*>(RotationMatrix.data()), {6, 6});
+      std::vector<real> rotationMatrix(36, 0.0);
+      RotationMatrixViewT rotationMatrixView(const_cast<real*>(rotationMatrix.data()), {6, 6});
 
-      symmetricTensor2RotationMatrix(FaceNormal, Strike, Dip, RotationMatrixView, 0, 0);
-      m_RotationMatrices[Index] = std::move(RotationMatrix);
+      symmetricTensor2RotationMatrix(faceNormal, strike, dip, rotationMatrixView, 0, 0);
+      m_RotationMatrices[index] = std::move(rotationMatrix);
     }
-
-    /*
-    // check whether the key exists. Otherwise, init with 0s
-    auto IniBulk_xx = FaultParams.at("s_xx");
-    auto IniBulk_yy = FaultParams.at("s_yy");
-    auto IniBulk_zz = FaultParams.at("s_zz");
-    auto IniShear_xy = FaultParams.at("s_xy");
-    auto IniShear_yz = FaultParams.at("s_yz");
-    auto IniShear_xz = FaultParams.at("s_xz");
-    */
   }
 
   void initConstrains() {
@@ -227,7 +213,7 @@ public:
   }
 
   void evaluateInitialStressInFaultCS() {
-    // Compute InitialStressInFaultCS
+    // Compute initialStressInFaultCS
   }
 
   /*
@@ -239,20 +225,19 @@ public:
 
 private:
 
-  ElementwiseFaultParamsT m_ElementwiseParams;
-  FaultGeomParamsT m_GeomParam;
+  ElementwiseFaultParamsT elementwiseParams;
+  FaultGeomParamsT geomParam;
 
-  ReceiverPointsT m_ReceiverPoints{};
-  ConstantsT m_Constants{};
-  std::vector<int> m_OutputLabels{};
+  ReceiverPointsT receiverPoints{};
+  ConstantsT constants{};
+  std::vector<int> outputLabels{};
   std::vector<std::vector<real>> m_RotationMatrices{};
 
-  const MeshReader* m_MeshReader;
-
-  bool DR_pick_output;
-  size_t nDR_pick;
+  const MeshReader* meshReader;
+  bool isDrPickOutput{};
+  size_t nDrPick;
   size_t nOutPoints;
-  int m_rank{-1};
+  int localRank{-1};
   DrVarsT drVars;
 };
 

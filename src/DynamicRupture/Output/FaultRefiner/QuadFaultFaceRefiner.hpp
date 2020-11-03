@@ -15,61 +15,61 @@ namespace seissol {
 
 class seissol::dr::output::QuadFaultFaceRefiner : public seissol::dr::output::FaultRefinerInterface {
   int getNumSubTriangles() override {return 4;}
-  void refineAndAccumulate(int RefinementLevel,
-                           int FaultFaceIndex,
-                           int LocalFaceSideId,
-                           ExtTriangle ReferenceFace,
-                           ExtTriangle GlobalFace) override {
+  void refineAndAccumulate(int refinementLevel,
+                           int faultFaceIndex,
+                           int localFaceSideId,
+                           ExtTriangle referenceFace,
+                           ExtTriangle globalFace) override {
 
-    if (RefinementLevel == 0) {
-      ReceiverPointT Receiver{};
+    if (refinementLevel == 0) {
+      ReceiverPointT receiver{};
 
-      Receiver.IsInside = true;
-      Receiver.FaultFaceIndex = FaultFaceIndex;
-      Receiver.LocalFaceSideId = LocalFaceSideId;
-      Receiver.GlobalReceiverIndex = m_Points.size();
-      Receiver.Global = getMidTrianglePoint(GlobalFace);
-      Receiver.Referece = getMidTrianglePoint(ReferenceFace);
-      Receiver.GlobalSubTet = GlobalFace;
+      receiver.isInside = true;
+      receiver.faultFaceIndex = faultFaceIndex;
+      receiver.localFaceSideId = localFaceSideId;
+      receiver.globalReceiverIndex = points.size();
+      receiver.global = getMidTrianglePoint(globalFace);
+      receiver.referece = getMidTrianglePoint(referenceFace);
+      receiver.globalSubTet = globalFace;
 
-      m_Points.push_back(Receiver);
+      points.push_back(receiver);
       return;
     }
 
-    ExtVrtxCoords RefMidPoint1 = getMidPoint(ReferenceFace.p1, ReferenceFace.p2);
-    ExtVrtxCoords RefMidPoint2 = getMidPoint(ReferenceFace.p2, ReferenceFace.p3);
-    ExtVrtxCoords RefMidPoint3 = getMidPoint(ReferenceFace.p3, ReferenceFace.p1);
+    ExtVrtxCoords refMidPoint1 = getMidPoint(referenceFace.p1, referenceFace.p2);
+    ExtVrtxCoords refMidPoint2 = getMidPoint(referenceFace.p2, referenceFace.p3);
+    ExtVrtxCoords refMidPoint3 = getMidPoint(referenceFace.p3, referenceFace.p1);
 
-    ExtVrtxCoords GlbMidPoint1 = getMidPoint(GlobalFace.p1, GlobalFace.p2);
-    ExtVrtxCoords GlbMidPoint2 = getMidPoint(GlobalFace.p2, GlobalFace.p3);
-    ExtVrtxCoords GlbMidPoint3 = getMidPoint(GlobalFace.p3, GlobalFace.p1);
+    ExtVrtxCoords glbMidPoint1 = getMidPoint(globalFace.p1, globalFace.p2);
+    ExtVrtxCoords glbMidPoint2 = getMidPoint(globalFace.p2, globalFace.p3);
+    ExtVrtxCoords glbMidPoint3 = getMidPoint(globalFace.p3, globalFace.p1);
 
     {
       // First sub-face (-triangle)
-      ExtTriangle SubReferenceFace(ReferenceFace.p1, RefMidPoint1, RefMidPoint3);
-      ExtTriangle SubGlobalFace(GlobalFace.p1, GlbMidPoint1, GlbMidPoint3);
-      this->refineAndAccumulate(RefinementLevel - 1, FaultFaceIndex, LocalFaceSideId, SubReferenceFace, SubGlobalFace);
+      ExtTriangle subReferenceFace(referenceFace.p1, refMidPoint1, refMidPoint3);
+      ExtTriangle subGlobalFace(globalFace.p1, glbMidPoint1, glbMidPoint3);
+      this->refineAndAccumulate(refinementLevel - 1, faultFaceIndex, localFaceSideId, subReferenceFace, subGlobalFace);
     }
 
     {
       // Second sub-face (-triangle)
-      ExtTriangle SubReferenceFace(RefMidPoint1, ReferenceFace.p2, RefMidPoint2);
-      ExtTriangle SubGlobalFace(GlbMidPoint1, GlobalFace.p2, GlbMidPoint2);
-      this->refineAndAccumulate(RefinementLevel - 1, FaultFaceIndex, LocalFaceSideId, SubReferenceFace, SubGlobalFace);
+      ExtTriangle subReferenceFace(refMidPoint1, referenceFace.p2, refMidPoint2);
+      ExtTriangle subGlobalFace(glbMidPoint1, globalFace.p2, glbMidPoint2);
+      this->refineAndAccumulate(refinementLevel - 1, faultFaceIndex, localFaceSideId, subReferenceFace, subGlobalFace);
     }
 
     {
       // Third sub-face (-triangle)
-      ExtTriangle SubReferenceFace(RefMidPoint1, RefMidPoint2, RefMidPoint3);
-      ExtTriangle SubGlobalFace(GlbMidPoint1, GlbMidPoint2, GlbMidPoint3);
-      this->refineAndAccumulate(RefinementLevel - 1, FaultFaceIndex, LocalFaceSideId, SubReferenceFace, SubGlobalFace);
+      ExtTriangle subReferenceFace(refMidPoint1, refMidPoint2, refMidPoint3);
+      ExtTriangle subGlobalFace(glbMidPoint1, glbMidPoint2, glbMidPoint3);
+      this->refineAndAccumulate(refinementLevel - 1, faultFaceIndex, localFaceSideId, subReferenceFace, subGlobalFace);
     }
 
     {
       // Fourth sub-face (-triangle)
-      ExtTriangle SubReferenceFace(RefMidPoint3, RefMidPoint2, ReferenceFace.p3);
-      ExtTriangle SubGlobalFace(GlbMidPoint3, GlbMidPoint2, GlobalFace.p3);
-      this->refineAndAccumulate(RefinementLevel - 1, FaultFaceIndex, LocalFaceSideId, SubReferenceFace, SubGlobalFace);
+      ExtTriangle subReferenceFace(refMidPoint3, refMidPoint2, referenceFace.p3);
+      ExtTriangle subGlobalFace(glbMidPoint3, glbMidPoint2, globalFace.p3);
+      this->refineAndAccumulate(refinementLevel - 1, faultFaceIndex, localFaceSideId, subReferenceFace, subGlobalFace);
     }
   }
 };

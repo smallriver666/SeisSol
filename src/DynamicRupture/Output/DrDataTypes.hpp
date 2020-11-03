@@ -16,10 +16,20 @@ namespace seissol {
       template<int DIM>
       struct VarT {
         constexpr int dim() {return DIM;}
+
         real* operator[](int index) {
           assert(index < DIM && "access is out of the bounds");
           return data[index];
         }
+
+        void releaseData() {
+          if (isActive) {
+            for (auto item: data) {
+              delete[] item;
+            }
+          }
+        }
+
         std::array<real*, DIM> data = {nullptr};
         bool isActive{false};
         size_t size;
@@ -55,41 +65,46 @@ namespace seissol {
 
 
       struct GeneralParamsT {
-        OutputType OutputPointType{OutputType::AtPickpoint};
-        int SlipRateOutputType{1};
-        int FrictionLawType{0};
-        int BackgroundType{0};
-        bool IsRfOutputOn{false};
-        bool IsDsOutputOn{false};
-        bool IsMagnitudeOutputOn{false};
-        bool IsEnergyRateOutputOn{false};
-        bool IsGpWiseOutput{false};
-        bool IsTermalPressureOn{false};
-        int EnergyRatePrintTimeInterval{1};
-        bool IsRfTimeOn{false};
-        bool FaultOutputFlag {false};
-        std::string OutputFilePrefix{"data"};
-        std::string XdmfWriterBackend{"hdf5"};
-        std::string CheckPointBackend{"none"};
+        OutputType outputPointType{OutputType::AtPickpoint};
+        int slipRateOutputType{1};
+        int frictionLawType{0};
+        int backgroundType{0};
+        bool isRfOutputOn{false};
+        bool isDsOutputOn{false};
+        bool isMagnitudeOutputOn{false};
+        bool isEnergyRateOutputOn{false};
+        bool isGpWiseOutput{false};
+        bool isTermalPressureOn{false};
+        int energyRatePrintTimeInterval{1};
+        bool isRfTimeOn{false};
+        bool faultOutputFlag {false};
+        std::string outputFilePrefix{"data"};
+        std::string xdmfWriterBackend{"hdf5"};
+        std::string checkPointBackend{"none"};
       };
 
 
       struct PickpointParamsT {
         std::array<bool, std::tuple_size<DrVarsT>::value> OutputMask{true, true, true}; // the rest is false by default
-        int PrintTimeInterval{1};
-        int NumOutputPoints{0};
-        std::string PPFileName{};
+        int printTimeInterval{1};
+        int numOutputPoints{0};
+        std::string ppFileName{};
       };
 
 
       struct ElementwiseFaultParamsT {
-        int PrintTimeInterval{2};
-        double PrintTimeIntervalSec{1.0};
-        int PrintIntervalCriterion{1};
-        int MaxPickStore{50};
-        std::array<bool, std::tuple_size<DrVarsT>::value> OutputMask{true, true, true, true};
-        int RefinementStrategy{2};
-        int Refinement{2};
+        int printTimeInterval{2};
+        double printTimeIntervalSec{1.0};
+        int printIntervalCriterion{1};
+        int maxPickStore{50};
+        std::array<bool, std::tuple_size<DrVarsT>::value> outputMask{true, true, true, true};
+        int refinementStrategy{2};
+        int refinement{2};
+      };
+
+
+      struct OutputState {
+        DrVarsT vars;
       };
     }
 
@@ -97,30 +112,30 @@ namespace seissol {
     struct ExtVrtxCoords {
       ExtVrtxCoords() = default;
       ~ExtVrtxCoords() = default;
-      ExtVrtxCoords(const ExtVrtxCoords& Other) {
+      ExtVrtxCoords(const ExtVrtxCoords& other) {
         for (int i = 0; i < 3; ++i)
-          Coords[i] = Other.Coords[i];
+          coords[i] = other.coords[i];
       }
-      ExtVrtxCoords& operator=(const ExtVrtxCoords& Other) {
+      ExtVrtxCoords& operator=(const ExtVrtxCoords& other) {
         for (int i = 0; i < 3; ++i)
-          Coords[i] = Other.Coords[i];
+          coords[i] = other.coords[i];
         return *this;
       }
-      ExtVrtxCoords(std::initializer_list<double> InputCoords) {
-        assert(InputCoords.size() == 3 && "ExtVrtxCoords must get initialized with 3 values");
-        auto Begin = InputCoords.begin();
-        for (int i = 0; i < 3; ++i, ++Begin)
-          Coords[i] = *Begin;
+      ExtVrtxCoords(std::initializer_list<double> inputCoords) {
+        assert(inputCoords.size() == 3 && "ExtVrtxCoords must get initialized with 3 values");
+        auto begin = inputCoords.begin();
+        for (int i = 0; i < 3; ++i, ++begin)
+          coords[i] = *begin;
       }
 
-      VrtxCoords Coords = {0.0, 0.0, 0.0};
-      double& x = Coords[0];
-      double& y = Coords[1];
-      double& z = Coords[2];
+      VrtxCoords coords = {0.0, 0.0, 0.0};
+      double& x = coords[0];
+      double& y = coords[1];
+      double& z = coords[2];
 
-      double& xi = Coords[0];
-      double& eta = Coords[1];
-      double& zeta = Coords[2];
+      double& xi = coords[0];
+      double& eta = coords[1];
+      double& zeta = coords[2];
   };
 
 
@@ -128,51 +143,51 @@ namespace seissol {
       ExtTriangle() = default;
       ~ExtTriangle() = default;
       explicit ExtTriangle(const ExtVrtxCoords& p1, const ExtVrtxCoords& p2, const ExtVrtxCoords& p3) {
-        Points[0] = p1;
-        Points[1] = p2;
-        Points[2] = p3;
+        points[0] = p1;
+        points[1] = p2;
+        points[2] = p3;
       }
 
-      ExtTriangle(const ExtTriangle& Other) {
+      ExtTriangle(const ExtTriangle& other) {
         for (int i = 0; i < 3; ++i)
-          Points[i] = Other.Points[i];
+          points[i] = other.points[i];
       }
-      ExtTriangle& operator=(const ExtTriangle& Other) {
+      ExtTriangle& operator=(const ExtTriangle& other) {
         for (int i = 0; i < 3; ++i)
-          Points[i] = Other.Points[i];
+          points[i] = other.points[i];
         return *this;
       }
 
-      std::array<ExtVrtxCoords, 3> Points{};
-      ExtVrtxCoords& p1 = Points[0];
-      ExtVrtxCoords& p2 = Points[1];
-      ExtVrtxCoords& p3 = Points[2];
+      std::array<ExtVrtxCoords, 3> points{};
+      ExtVrtxCoords& p1 = points[0];
+      ExtVrtxCoords& p2 = points[1];
+      ExtVrtxCoords& p3 = points[2];
     };
 
 
     struct ReceiverPointT {
-      ExtVrtxCoords Global{};    // physical coords of a receiver
-      ExtVrtxCoords Referece{};  // reference coords of a receiver
-      ExtTriangle GlobalSubTet{};// (subtet) vertices coordinates (of a surrounding triangle)
-      int FaultFaceIndex{-1};    // Face Fault index which the receiver belongs to
-      int LocalFaceSideId{-1};   // Side ID of a reference element
-      int ElementIndex{-1};      // Element which the receiver belongs to
-      int GlobalReceiverIndex{-1};  // receiver index of global list
-      bool IsInside{};  // If a point is inside the mesh or not
-      int NearestGpIndex{-1};
-      double DistanceToNearestGp{std::numeric_limits<double>::max()};
+      ExtVrtxCoords global{};    // physical coords of a receiver
+      ExtVrtxCoords referece{};  // reference coords of a receiver
+      ExtTriangle globalSubTet{};// (subtet) vertices coordinates (of a surrounding triangle)
+      int faultFaceIndex{-1};    // Face Fault index which the receiver belongs to
+      int localFaceSideId{-1};   // Side ID of a reference element
+      int elementIndex{-1};      // Element which the receiver belongs to
+      int globalReceiverIndex{-1};  // receiver index of global list
+      bool isInside{};  // If a point is inside the mesh or not
+      int nearestGpIndex{-1};
+      double distanceToNearestGp{std::numeric_limits<double>::max()};
     };
     using ReceiverPointsT = std::vector<ReceiverPointT>;
 
     struct PlusMinusBasisFunctionsT {
-      std::vector<real> PlusSide;
-      std::vector<real> MinusSide;
+      std::vector<real> plusSide;
+      std::vector<real> minusSide;
     };
 
     struct ConstantT {
-      real P0{0.0};
-      real Ts0{0.0};
-      real Td0{0.0};
+      real p0{0.0};
+      real ts0{0.0};
+      real td0{0.0};
     };
     using ConstantsT = std::vector<ConstantT>;
   }

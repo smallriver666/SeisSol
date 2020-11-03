@@ -14,45 +14,45 @@ namespace seissol {
 
 class seissol::dr::output::PickpointOutput {
 public:
-  void setParams(const PickpointParamsT& Params, const MeshReader* Reader) {
-    m_PickpointParams = Params;
-    m_meshReader = Reader;
+  void setParams(const PickpointParamsT& params, const MeshReader* reader) {
+    pickpointParams = params;
+    meshReader = reader;
   }
 
   void init() {
     readCoordsFromFile();
     // findElementsContainingPoints();
-    // InitPointsIndices();
-    // ProjectPointsToFaces();
-    // FindClosestGpPoint();
+    // initPointsIndices();
+    // projectPointsToFaces();
+    // findClosestGpPoint();
   }
 
   void readCoordsFromFile() {
     using namespace initializers;
-    StringsT Content = FileProcessor::getFileAsStrings(m_PickpointParams.PPFileName);
-    FileProcessor::removeEmptyLines(Content);
+    StringsT content = FileProcessor::getFileAsStrings(pickpointParams.ppFileName);
+    FileProcessor::removeEmptyLines(content);
 
-    if (m_PickpointParams.NumOutputPoints > static_cast<int>(Content.size()))
+    if (pickpointParams.numOutputPoints > static_cast<int>(content.size()))
       throw std::runtime_error("requested num. of fault pick-points is more than the file contains");
 
     // iterate line by line and initialize DrRecordPoints
-    for (const auto &Line: Content) {
-      std::array<real, 3> Coords{};
-      convertStringToMask(Line, Coords);
+    for (const auto &line: content) {
+      std::array<real, 3> coords{};
+      convertStringToMask(line, coords);
 
-      ReceiverPointT Point{};
+      ReceiverPointT point{};
       for (int i = 0; i < 3; ++i) {
-        Point.Global.Coords[0] = Coords[0];
+        point.global.coords[0] = coords[0];
       }
 
-      m_Points.push_back(Point);
+      points.push_back(point);
     }
   }
 
 private:
-  PickpointParamsT m_PickpointParams;
-  ReceiverPointsT m_Points{};
-  const MeshReader* m_meshReader;
+  PickpointParamsT pickpointParams;
+  ReceiverPointsT points{};
+  const MeshReader* meshReader;
 };
 
 #endif //SEISSOL_PICKPOINTOUTPUT_HPP

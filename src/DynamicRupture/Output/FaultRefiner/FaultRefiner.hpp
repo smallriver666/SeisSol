@@ -8,7 +8,7 @@
 namespace seissol {
   namespace dr {
     namespace output {
-      std::unique_ptr<FaultRefinerInterface> getRefiner(const int Strategy);
+      std::unique_ptr<FaultRefinerInterface> getRefiner(int strategy);
     }
   }
 }

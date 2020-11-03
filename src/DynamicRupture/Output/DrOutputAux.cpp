@@ -10,198 +10,197 @@
 namespace seissol {
   namespace dr {
 
-    int getElementVertexId(int LocalSideId, int LocalFaceVertexId) {
-      return MeshTools::FACE2NODES[LocalSideId][LocalFaceVertexId];
+    int getElementVertexId(int localSideId, int localFaceVertexId) {
+      return MeshTools::FACE2NODES[localSideId][localFaceVertexId];
     }
 
 
-    ExtTriangle getReferenceFace(int LocalSideId) {
-      ExtTriangle ReferenceFace;
-      switch (LocalSideId) {
+    ExtTriangle getReferenceFace(int localSideId) {
+      ExtTriangle referenceFace;
+      switch (localSideId) {
         case 0:
-          ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-          ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
-          ReferenceFace.p3.xi = 1.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 0.0;
+          referenceFace.p1.xi = 0.0; referenceFace.p1.eta = 0.0; referenceFace.p1.zeta = 0.0;
+          referenceFace.p2.xi = 0.0; referenceFace.p2.eta = 1.0; referenceFace.p2.zeta = 0.0;
+          referenceFace.p3.xi = 1.0; referenceFace.p3.eta = 0.0; referenceFace.p3.zeta = 0.0;
           break;
         case 1:
-          ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-          ReferenceFace.p2.xi = 1.0; ReferenceFace.p2.eta = 0.0; ReferenceFace.p2.zeta = 0.0;
-          ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 1.0;
+          referenceFace.p1.xi = 0.0; referenceFace.p1.eta = 0.0; referenceFace.p1.zeta = 0.0;
+          referenceFace.p2.xi = 1.0; referenceFace.p2.eta = 0.0; referenceFace.p2.zeta = 0.0;
+          referenceFace.p3.xi = 0.0; referenceFace.p3.eta = 0.0; referenceFace.p3.zeta = 1.0;
           break;
         case 2:
-          ReferenceFace.p1.xi = 0.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-          ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 0.0; ReferenceFace.p2.zeta = 1.0;
-          ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 1.0; ReferenceFace.p3.zeta = 0.0;
+          referenceFace.p1.xi = 0.0; referenceFace.p1.eta = 0.0; referenceFace.p1.zeta = 0.0;
+          referenceFace.p2.xi = 0.0; referenceFace.p2.eta = 0.0; referenceFace.p2.zeta = 1.0;
+          referenceFace.p3.xi = 0.0; referenceFace.p3.eta = 1.0; referenceFace.p3.zeta = 0.0;
           break;
         case 3:
-          ReferenceFace.p1.xi = 1.0; ReferenceFace.p1.eta = 0.0; ReferenceFace.p1.zeta = 0.0;
-          ReferenceFace.p2.xi = 0.0; ReferenceFace.p2.eta = 1.0; ReferenceFace.p2.zeta = 0.0;
-          ReferenceFace.p3.xi = 0.0; ReferenceFace.p3.eta = 0.0; ReferenceFace.p3.zeta = 1.0;
+          referenceFace.p1.xi = 1.0; referenceFace.p1.eta = 0.0; referenceFace.p1.zeta = 0.0;
+          referenceFace.p2.xi = 0.0; referenceFace.p2.eta = 1.0; referenceFace.p2.zeta = 0.0;
+          referenceFace.p3.xi = 0.0; referenceFace.p3.eta = 0.0; referenceFace.p3.zeta = 1.0;
           break;
         default:
           throw std::runtime_error("Unknown Local Side Id. Must be 0, 1, 2 or 3");
       }
 
-      return ReferenceFace;
+      return referenceFace;
     }
 
 
-    void computeStrikeAndDipVectors(const VrtxCoords Normal, VrtxCoords Strike, VrtxCoords Dip) {
+    void computeStrikeAndDipVectors(const VrtxCoords normal, VrtxCoords strike, VrtxCoords dip) {
       // Note: equations are explained in documentation -> left-lateral-right-lateral-normal-reverse
 
       // compute normalized strike vector
-      auto StrikeInvLength = 1.0 / std::sqrt(Normal[0] * Normal[0] + Normal[1] * Normal[1]);
-      Strike[0] = Normal[1] * StrikeInvLength;
-      Strike[1] = -Normal[0] * StrikeInvLength;
-      Strike[2] = 0.0;
+      auto StrikeInvLength = 1.0 / std::sqrt(normal[0] * normal[0] + normal[1] * normal[1]);
+      strike[0] = normal[1] * StrikeInvLength;
+      strike[1] = -normal[0] * StrikeInvLength;
+      strike[2] = 0.0;
 
       // compute normalized dip vector
-      Dip[0] = -1.0 * Strike[1] * Normal[2];
-      Dip[1] = Strike[0] * Normal[2];
-      Dip[2] = Strike[1] * Normal[0] - Strike[0] * Normal[1];
-      auto DipInvLength = 1.0 / std::sqrt(Dip[0] * Dip[0] + Dip[1] * Dip[1] + Dip[2] * Dip[2]);
-      Dip[0] *= DipInvLength;
-      Dip[1] *= DipInvLength;
-      Dip[2] *= DipInvLength;
+      dip[0] = -1.0 * strike[1] * normal[2];
+      dip[1] = strike[0] * normal[2];
+      dip[2] = strike[1] * normal[0] - strike[0] * normal[1];
+      auto dipInvLength = 1.0 / std::sqrt(dip[0] * dip[0] + dip[1] * dip[1] + dip[2] * dip[2]);
+      dip[0] *= dipInvLength;
+      dip[1] *= dipInvLength;
+      dip[2] *= dipInvLength;
     }
 
 
-    ExtVrtxCoords getMidTrianglePoint(const ExtTriangle& Triangle) {
-      ExtVrtxCoords AvgPoint{};
-      for (int Axis = 0; Axis < 3; ++Axis) {
-        AvgPoint.Coords[Axis] = (Triangle.p1.Coords[Axis] + Triangle.p2.Coords[Axis] + Triangle.p3.Coords[Axis]) / 3.0;
+    ExtVrtxCoords getMidTrianglePoint(const ExtTriangle& triangle) {
+      ExtVrtxCoords avgPoint{};
+      for (int axis = 0; axis < 3; ++axis) {
+        avgPoint.coords[axis] = (triangle.p1.coords[axis] + triangle.p2.coords[axis] + triangle.p3.coords[axis]) / 3.0;
       }
-      return AvgPoint;
+      return avgPoint;
     }
 
 
     ExtVrtxCoords getMidPoint(const ExtVrtxCoords& p1, const ExtVrtxCoords& p2) {
-      ExtVrtxCoords MidPoint{};
-      for (int Axis = 0; Axis < 3; ++Axis) {
-        MidPoint.Coords[Axis] = 0.5 * (p1.Coords[Axis] + p2.Coords[Axis]);
+      ExtVrtxCoords midPoint{};
+      for (int axis = 0; axis < 3; ++axis) {
+        midPoint.coords[axis] = 0.5 * (p1.coords[axis] + p2.coords[axis]);
       }
-      return MidPoint;
+      return midPoint;
     }
 
 
     std::tuple<unsigned, std::shared_ptr<double []>, std::shared_ptr<double []>>
-    generateTriangleQuadrature(unsigned PolyDegree) {
+    generateTriangleQuadrature(unsigned polyDegree) {
 
       // allocate data
-      unsigned numQuadraturePoints = PolyDegree * PolyDegree;
-      std::shared_ptr<double []> Weights( new double[numQuadraturePoints], std::default_delete<double[]>());
-      std::shared_ptr<double []> Points( new double[2 * numQuadraturePoints], std::default_delete<double[]>());
+      unsigned numQuadraturePoints = polyDegree * polyDegree;
+      std::shared_ptr<double []> weights( new double[numQuadraturePoints], std::default_delete<double[]>());
+      std::shared_ptr<double []> points( new double[2 * numQuadraturePoints], std::default_delete<double[]>());
 
       // Generate triangle quadrature points and weights (Factory Method)
-      seissol::quadrature::TriangleQuadrature(reshape<2>(&Points[0]), &Weights[0], PolyDegree);
-      return std::make_tuple(numQuadraturePoints, Weights, Points);
+      seissol::quadrature::TriangleQuadrature(reshape<2>(&points[0]), &weights[0], polyDegree);
+      return std::make_tuple(numQuadraturePoints, weights, points);
     }
 
 
-    double distance(const double V1[2], const double V2[2]) {
-      Eigen::Vector2d Vector1(V1[0],V1[1]), Vector2(V2[0],V2[1]);
-      return (Vector1 - Vector2).norm();
+    double distance(const double v1[2], const double v2[2]) {
+      Eigen::Vector2d vector1(v1[0], v1[1]), vector2(v2[0], v2[1]);
+      return (vector1 - vector2).norm();
     }
 
 
-    std::pair<int, double> getNearestFacePoint(const double TargetPoint[2],
-                                               const double (*FacePoints)[2],
-                                               const unsigned NumFacePoints) {
+    std::pair<int, double> getNearestFacePoint(const double targetPoint[2],
+                                               const double (*facePoints)[2],
+                                               const unsigned numFacePoints) {
 
-      int NearestPoint{-1};
-      double ShortestDistance = std::numeric_limits<double>::max();
+      int nearestPoint{-1};
+      double shortestDistance = std::numeric_limits<double>::max();
 
-      for (unsigned Index = 0; Index < NumFacePoints; ++Index) {
-        double NextPoint[2] = {FacePoints[Index][0], FacePoints[Index][1]};
+      for (unsigned index = 0; index < numFacePoints; ++index) {
+        double nextPoint[2] = {facePoints[index][0], facePoints[index][1]};
 
-        auto CurrentDistance = distance(TargetPoint, NextPoint);
-        if (ShortestDistance > CurrentDistance) {
-          ShortestDistance = CurrentDistance;
-          NearestPoint = Index;
+        auto currentDistance = distance(targetPoint, nextPoint);
+        if (shortestDistance > currentDistance) {
+          shortestDistance = currentDistance;
+          nearestPoint = index;
         }
       }
-      return std::make_pair(NearestPoint, ShortestDistance);
+      return std::make_pair(nearestPoint, shortestDistance);
     }
 
 
-    void assignNearestGaussianPoints(ReceiverPointsT& GeoPoints) {
-      std::shared_ptr<double []> Weights = nullptr;
-      std::shared_ptr<double []> PointsData = nullptr;
-      unsigned NumPoints{};
+    void assignNearestGaussianPoints(ReceiverPointsT& geoPoints) {
+      std::shared_ptr<double []> weights = nullptr;
+      std::shared_ptr<double []> pointsData = nullptr;
+      unsigned numPoints{};
 
-      std::tie(NumPoints, Weights, PointsData) = generateTriangleQuadrature(CONVERGENCE_ORDER + 1);
-      double (*TrianglePoints2D)[2] = reshape<2>(&PointsData[0]);
+      std::tie(numPoints, weights, pointsData) = generateTriangleQuadrature(CONVERGENCE_ORDER + 1);
+      double (*TrianglePoints2D)[2] = reshape<2>(&pointsData[0]);
 
-      for (auto& GeoPoint: GeoPoints) {
+      for (auto& geoPoint: geoPoints) {
 
-        double TargetPoint2D[2];
-        transformations::XiEtaZeta2chiTau(GeoPoint.LocalFaceSideId, GeoPoint.Referece.Coords, TargetPoint2D);
+        double targetPoint2D[2];
+        transformations::XiEtaZeta2chiTau(geoPoint.localFaceSideId, geoPoint.referece.coords, targetPoint2D);
 
-        int NearestPoint{-1};
-        double ShortestDistance = std::numeric_limits<double>::max();
-        std::tie(NearestPoint, ShortestDistance) = getNearestFacePoint(TargetPoint2D,
+        int nearestPoint{-1};
+        double shortestDistance = std::numeric_limits<double>::max();
+        std::tie(nearestPoint, shortestDistance) = getNearestFacePoint(targetPoint2D,
                                                                        TrianglePoints2D,
-                                                                       NumPoints);
-        GeoPoint.NearestGpIndex = NearestPoint;
-        GeoPoint.DistanceToNearestGp = ShortestDistance;
+                                                                       numPoints);
+        geoPoint.nearestGpIndex = nearestPoint;
+        geoPoint.distanceToNearestGp = shortestDistance;
       }
     }
 
 
-    void projectPointToFace(ExtVrtxCoords& Point, const ExtTriangle& Face, const VrtxCoords FaceNormal) {
+    void projectPointToFace(ExtVrtxCoords& point, const ExtTriangle& face, const VrtxCoords faceNormal) {
       using namespace Eigen;
 
-      Vector3d OriginalPoint(Point.x, Point.y, Point.z);
+      Vector3d originalPoint(point.x, point.y, point.z);
 
-      Vector3d R = OriginalPoint - Vector3d(Face.p1.x, Face.p1.y, Face.p1.z);
-      Vector3d Direction(FaceNormal[0], FaceNormal[1], FaceNormal[2]);
-      Direction.normalize();
+      Vector3d r = originalPoint - Vector3d(face.p1.x, face.p1.y, face.p1.z);
+      Vector3d direction(faceNormal[0], faceNormal[1], faceNormal[2]);
+      direction.normalize();
 
-      auto Displacement = -Direction.dot(R);
-      Vector3d TargetPoint = OriginalPoint + Displacement * Direction;
+      auto displacement = -direction.dot(r);
+      Vector3d targetPoint = originalPoint + displacement * direction;
 
       for (int i = 0; i < 3; ++i) {
-        Point.Coords[i] = TargetPoint(i);
+        point.coords[i] = targetPoint(i);
       }
     }
 
-    PlusMinusBasisFunctionsT getPlusMinusBasisFunctions(const VrtxCoords PointCoords,
-                                                        const VrtxCoords PlusElementCoords[4],
-                                                        const VrtxCoords MinusElementCoords[4]) {
+    PlusMinusBasisFunctionsT getPlusMinusBasisFunctions(const VrtxCoords pointCoords,
+                                                        const VrtxCoords plusElementCoords[4],
+                                                        const VrtxCoords minusElementCoords[4]) {
 
-      PlusMinusBasisFunctionsT BasisFunctions{};
-      Eigen::Vector3d Point(PointCoords[0], PointCoords[1], PointCoords[2]);
+      PlusMinusBasisFunctionsT basisFunctions{};
+      Eigen::Vector3d point(pointCoords[0], pointCoords[1], pointCoords[2]);
 
       {
-        auto PlusXiEtaZeta = transformations::tetrahedronGlobalToReference(PlusElementCoords[0],
-                                                                           PlusElementCoords[1],
-                                                                           PlusElementCoords[2],
-                                                                           PlusElementCoords[3],
-                                                                           Point);
+        auto plusXiEtaZeta = transformations::tetrahedronGlobalToReference(plusElementCoords[0],
+                                                                           plusElementCoords[1],
+                                                                           plusElementCoords[2],
+                                                                           plusElementCoords[3],
+                                                                           point);
 
-        basisFunction::SampledBasisFunctions<real> Sampler(CONVERGENCE_ORDER,
-                                                           PlusXiEtaZeta[0],
-                                                           PlusXiEtaZeta[1],
-                                                           PlusXiEtaZeta[2]);
-        BasisFunctions.PlusSide = std::move(Sampler.m_data);
+        basisFunction::SampledBasisFunctions<real> sampler(CONVERGENCE_ORDER,
+                                                           plusXiEtaZeta[0],
+                                                           plusXiEtaZeta[1],
+                                                           plusXiEtaZeta[2]);
+        basisFunctions.plusSide = std::move(sampler.m_data);
       }
 
-      std::vector<real> MinusBasisFunctions;
       {
-        auto MinusXiEtaZeta = transformations::tetrahedronGlobalToReference(MinusElementCoords[0],
-                                                                            MinusElementCoords[1],
-                                                                            MinusElementCoords[2],
-                                                                            MinusElementCoords[3],
-                                                                            Point);
+        auto minusXiEtaZeta = transformations::tetrahedronGlobalToReference(minusElementCoords[0],
+                                                                            minusElementCoords[1],
+                                                                            minusElementCoords[2],
+                                                                            minusElementCoords[3],
+                                                                            point);
 
-        basisFunction::SampledBasisFunctions<real> Sampler(CONVERGENCE_ORDER,
-                                                           MinusXiEtaZeta[0],
-                                                           MinusXiEtaZeta[1],
-                                                           MinusXiEtaZeta[2]);
-        BasisFunctions.MinusSide = std::move(Sampler.m_data);
+        basisFunction::SampledBasisFunctions<real> sampler(CONVERGENCE_ORDER,
+                                                           minusXiEtaZeta[0],
+                                                           minusXiEtaZeta[1],
+                                                           minusXiEtaZeta[2]);
+        basisFunctions.minusSide = std::move(sampler.m_data);
       }
 
-      return BasisFunctions;
+      return basisFunctions;
     }
   }
 }

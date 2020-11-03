@@ -24,41 +24,41 @@ public:
     using namespace initializers;
 
     ParametersInitializer Reader(InputData);
-    m_GeneralParams = Reader.getDrGeneralParams();
+    generalParams = Reader.getDrGeneralParams();
 
     // adjust general output parameters
-    m_GeneralParams.IsRfTimeOn = m_GeneralParams.IsRfOutputOn;
-    if (m_GeneralParams.IsDsOutputOn && !m_GeneralParams.IsRfOutputOn) {
-      m_GeneralParams.IsRfOutputOn = true;
-      m_GeneralParams.IsRfTimeOn = true;
+    generalParams.isRfTimeOn = generalParams.isRfOutputOn;
+    if (generalParams.isDsOutputOn && !generalParams.isRfOutputOn) {
+      generalParams.isRfOutputOn = true;
+      generalParams.isRfTimeOn = true;
     }
 
     PickpointParamsT PpParams;
     ElementwiseFaultParamsT EwParams;
-    switch (m_GeneralParams.OutputPointType) {
+    switch (generalParams.outputPointType) {
       case OutputType::None:
         break;
 
       case OutputType::AtPickpoint:
         // readpar_faultAtPickpoint(EQN,BND,IC,DISC,IO,CalledFromStructCode)
-        m_PpOutput.reset(new PickpointOutput);
-        m_PpOutput->setParams(Reader.getPickPointParams(), &Mesher);
+        ppOutputBuilder.reset(new PickpointOutput);
+        ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
         break;
 
       case OutputType::Elementwise:
         // readpar_faultElementwise(EQN,BND,IC,DISC,IO,CalledFromStructCode)
-        m_EwOutput.reset(new ElementWiseOutput);
-        m_EwOutput->setParams(Reader.getElementwiseFaultParams(), &Mesher);
+        ewOutputBuilder.reset(new ElementWiseOutput);
+        ewOutputBuilder->setParams(Reader.getElementwiseFaultParams(), &Mesher);
         break;
 
       case OutputType::AtPickpointAndElementwise:
         // readpar_faultElementwise(EQN,BND,IC,DISC,IO,CalledFromStructCode)
         // readpar_faultAtPickpoint(EQN,BND,IC,DISC,IO,CalledFromStructCode)
-        m_PpOutput.reset(new PickpointOutput);
-        m_PpOutput->setParams(Reader.getPickPointParams(), &Mesher);
+        ppOutputBuilder.reset(new PickpointOutput);
+        ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
 
-        m_EwOutput.reset(new ElementWiseOutput);
-        m_EwOutput->setParams(Reader.getElementwiseFaultParams(), &Mesher);
+        ewOutputBuilder.reset(new ElementWiseOutput);
+        ewOutputBuilder->setParams(Reader.getElementwiseFaultParams(), &Mesher);
         break;
 
       default:
@@ -67,6 +67,9 @@ public:
   }
 
   void init(const std::unordered_map<std::string, double*>& FaultParams);
+  void writePickpointOutput();
+  void updateElementwiseOutput();
+
 
   virtual void tiePointers(seissol::initializers::Layer&  layerData,
                            seissol::initializers::DynamicRupture *dynRup,
@@ -99,10 +102,15 @@ public:
   virtual void postCompute(seissol::initializers::DynamicRupture &DynRup) = 0;
 
 protected:
-  GeneralParamsT m_GeneralParams;
+  void calcFaultOutput();
 
-  std::unique_ptr<ElementWiseOutput> m_EwOutput{nullptr};
-  std::unique_ptr<PickpointOutput>  m_PpOutput{nullptr};
+  GeneralParamsT generalParams;
+
+  std::unique_ptr<ElementWiseOutput> ewOutputBuilder{nullptr};
+  OutputState ewOutputState{};
+
+  std::unique_ptr<PickpointOutput>  ppOutputBuilder{nullptr};
+  OutputState ppOutputState{};
 };
 
 #endif //SEISSOL_DROUTOUT_DRBASE_HPP

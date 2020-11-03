@@ -7,26 +7,26 @@
 #include "ResultWriter/common.hpp"
 
 
-std::vector<double> getAllVertices(const seissol::dr::ReceiverPointsT& ReceiverPoints) {
-  std::vector<double> vertices(3 * (3  * ReceiverPoints.size()), 0.0);
+std::vector<double> getAllVertices(const seissol::dr::ReceiverPointsT& receiverPoints) {
+  std::vector<double> vertices(3 * (3  * receiverPoints.size()), 0.0);
 
-  for (size_t pointIndex{0}; pointIndex < ReceiverPoints.size(); ++pointIndex) {
+  for (size_t pointIndex{0}; pointIndex < receiverPoints.size(); ++pointIndex) {
     for (int vertexIndex{0}; vertexIndex < 3; ++vertexIndex) {
       const size_t globalVertexIndex = 3 * pointIndex + vertexIndex;
 
-      vertices[3 * globalVertexIndex] = ReceiverPoints[pointIndex].GlobalSubTet.Points[vertexIndex].x;
-      vertices[3 * globalVertexIndex + 1] = ReceiverPoints[pointIndex].GlobalSubTet.Points[vertexIndex].y;
-      vertices[3 * globalVertexIndex + 2] = ReceiverPoints[pointIndex].GlobalSubTet.Points[vertexIndex].z;
+      vertices[3 * globalVertexIndex] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].x;
+      vertices[3 * globalVertexIndex + 1] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].y;
+      vertices[3 * globalVertexIndex + 2] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].z;
     }
   }
   return vertices;
 }
 
 
-std::vector<unsigned int> getCellConnectivity(const seissol::dr::ReceiverPointsT& ReceiverPoints) {
-  std::vector<unsigned int> cells(3 * ReceiverPoints.size());
+std::vector<unsigned int> getCellConnectivity(const seissol::dr::ReceiverPointsT& receiverPoints) {
+  std::vector<unsigned int> cells(3 * receiverPoints.size());
 
-  for (size_t pointIndex{0}; pointIndex < ReceiverPoints.size(); ++pointIndex) {
+  for (size_t pointIndex{0}; pointIndex < receiverPoints.size(); ++pointIndex) {
     for (int vertexIndex{0}; vertexIndex < 3; ++vertexIndex) {
       const size_t globalVertexIndex = 3 * pointIndex + vertexIndex;
       cells[globalVertexIndex] = globalVertexIndex;
@@ -48,17 +48,17 @@ std::unique_ptr<int []> convertMaskFromBoolToInt(const std::array<bool, 12>& boo
 
 
 void seissol::dr::output::Base::init(const std::unordered_map<std::string, double*>& FaultParams) {
-  if (m_EwOutput) {
-    m_EwOutput->init(FaultParams);
+  if (ewOutputBuilder) {
+    ewOutputBuilder->init(FaultParams);
 
-    const auto& ReceiverPoints = m_EwOutput->m_ReceiverPoints;
-    auto cellConnectivity = getCellConnectivity(ReceiverPoints);
-    auto vertices = getAllVertices(ReceiverPoints);
-    auto intMask = convertMaskFromBoolToInt(m_EwOutput->m_ElementwiseParams.OutputMask);
+    const auto& receiverPoints = ewOutputBuilder->receiverPoints;
+    auto cellConnectivity = getCellConnectivity(receiverPoints);
+    auto vertices = getAllVertices(receiverPoints);
+    auto intMask = convertMaskFromBoolToInt(ewOutputBuilder->elementwiseParams.outputMask);
 
-    std::string NewFaultFilePrefix = m_GeneralParams.OutputFilePrefix.data() + std::string("-new");
-    double printTime = m_EwOutput->m_ElementwiseParams.PrintTimeIntervalSec;
-    auto backendType = seissol::writer::backendType(m_GeneralParams.XdmfWriterBackend.data());
+    std::string newFaultFilePrefix = generalParams.outputFilePrefix + std::string("-new");
+    double printTime = ewOutputBuilder->elementwiseParams.printTimeIntervalSec;
+    auto backendType = seissol::writer::backendType(generalParams.xdmfWriterBackend.c_str());
 
    std::vector<real*> dataPointers;
    auto recordPointers = [&dataPointers](auto& var, int) {
@@ -67,20 +67,20 @@ void seissol::dr::output::Base::init(const std::unordered_map<std::string, doubl
         dataPointers.push_back(var.data[dim]);
      }
    };
+   aux::forEach(ewOutputBuilder->drVars, recordPointers);
 
-   aux::forEach(m_EwOutput->drVars, recordPointers);
 
    seissol::SeisSol::main.secondFaultWriter().init(cellConnectivity.data(),
                                                     vertices.data(),
-                                                    static_cast<unsigned int>(ReceiverPoints.size()),
-                                                    static_cast<unsigned int>(3 * ReceiverPoints.size()),
+                                                    static_cast<unsigned int>(receiverPoints.size()),
+                                                    static_cast<unsigned int>(3 * receiverPoints.size()),
                                                     &intMask[0],
                                                     const_cast<const real**>(dataPointers.data()),
-                                                    NewFaultFilePrefix.data(),
+                                                    newFaultFilePrefix.data(),
                                                     printTime,
                                                     backendType);
 
-    auto& slipRate = std::get<VariableID::SlipRate>(m_EwOutput->drVars);
+    auto& slipRate = std::get<VariableID::SlipRate>(ewOutputBuilder->drVars);
     for (int dim = 0; dim < slipRate.dim(); ++dim) {
       for (size_t element = 0; element < slipRate.size; ++element) {
         slipRate[dim][element] = 100.0;
@@ -90,7 +90,21 @@ void seissol::dr::output::Base::init(const std::unordered_map<std::string, doubl
     seissol::SeisSol::main.secondFaultWriter().write(1.0);
   }
 
-  if (m_PpOutput) {
-    m_PpOutput->init();
+  if (ppOutputBuilder) {
+    ppOutputBuilder->init();
   }
+}
+
+void seissol::dr::output::Base::writePickpointOutput() {
+
+}
+
+
+void seissol::dr::output::Base::updateElementwiseOutput() {
+
+}
+
+
+void seissol::dr::output::Base::calcFaultOutput() {
+
 }

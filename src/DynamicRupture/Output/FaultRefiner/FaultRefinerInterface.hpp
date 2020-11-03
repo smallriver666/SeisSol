@@ -15,17 +15,17 @@ namespace seissol {
 class seissol::dr::output::FaultRefinerInterface {
 public:
   virtual int getNumSubTriangles() = 0;
-  virtual void refineAndAccumulate(int RefinementLevel,
-                                   int FaultFaceIndex,
-                                   int LocalFaceSideId,
-                                   ExtTriangle ReferenceFace,
-                                   ExtTriangle GlobalFace) = 0;
+  virtual void refineAndAccumulate(int refinementLevel,
+                                   int faultFaceIndex,
+                                   int localFaceSideId,
+                                   ExtTriangle referenceFace,
+                                   ExtTriangle globalFace) = 0;
 
-  ReceiverPointsT&& moveAllReceiverPoints() {return std::move(m_Points);}
-  ReceiverPointsT getAllReceiverPoints() {return m_Points;}
+  ReceiverPointsT&& moveAllReceiverPoints() {return std::move(points);}
+  ReceiverPointsT getAllReceiverPoints() {return points;}
 
 protected:
-  ReceiverPointsT m_Points{};
+  ReceiverPointsT points{};
 };
 
 #endif //SEISSOL_INTERFACE_HPP

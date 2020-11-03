@@ -4,8 +4,8 @@ namespace seissol {
   namespace dr {
     namespace output {
 
-      std::unique_ptr<FaultRefinerInterface> getRefiner(const int Strategy) {
-        switch (Strategy) {
+      std::unique_ptr<FaultRefinerInterface> getRefiner(const int strategy) {
+        switch (strategy) {
           case 1:
             return std::unique_ptr<FaultRefinerInterface>(new TripleFaultFaceRefiner);
           case 2:

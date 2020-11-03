@@ -14,96 +14,96 @@ namespace seissol {
 
 class seissol::dr::output::ParametersInitializer {
 public:
-  explicit ParametersInitializer(const YAML::Node& Data) : m_Data(Data) {}
+  explicit ParametersInitializer(const YAML::Node& userData) : data(userData) {}
 
 
   GeneralParamsT getDrGeneralParams() {
     using namespace initializers;
-    GeneralParamsT Params{};
+    GeneralParamsT params{};
 
-    if (!m_Data["dynamicrupture"]) {
+    if (!data["dynamicrupture"]) {
       throw std::runtime_error("dynamic rupture params. is not provided");
     }
 
-    const YAML::Node& DrData = m_Data["dynamicrupture"];
-    Params.OutputPointType = static_cast<OutputType>(getParamIfExists(DrData, "outputpointtype", 3));
-    Params.SlipRateOutputType = getParamIfExists(DrData, "sliprateoutputtype", 1);
-    Params.FrictionLawType = getParamIfExists(DrData, "fl", 0);
-    Params.BackgroundType = getParamIfExists(DrData, "backgroundtype", 0);
-    Params.IsRfOutputOn = getParamIfExists(DrData, "rf_output_on", false);
-    Params.IsDsOutputOn = getParamIfExists(DrData, "ds_output_on", false);
-    Params.IsMagnitudeOutputOn = getParamIfExists(DrData, "magnitude_output_on", false);
-    Params.IsEnergyRateOutputOn = getParamIfExists(DrData, "energy_rate_output_on", false);
-    Params.IsGpWiseOutput = getParamIfExists(DrData, "gpwise", false);
-    Params.IsTermalPressureOn = getParamIfExists(DrData, "thermalpress", false);
-    Params.BackgroundType = getParamIfExists(DrData, "energy_rate_printtimeinterval", 1);
+    const YAML::Node& DrData = data["dynamicrupture"];
+    params.outputPointType = static_cast<OutputType>(getParamIfExists(DrData, "outputpointtype", 3));
+    params.slipRateOutputType = getParamIfExists(DrData, "sliprateoutputtype", 1);
+    params.frictionLawType = getParamIfExists(DrData, "fl", 0);
+    params.backgroundType = getParamIfExists(DrData, "backgroundtype", 0);
+    params.isRfOutputOn = getParamIfExists(DrData, "rf_output_on", false);
+    params.isDsOutputOn = getParamIfExists(DrData, "ds_output_on", false);
+    params.isMagnitudeOutputOn = getParamIfExists(DrData, "magnitude_output_on", false);
+    params.isEnergyRateOutputOn = getParamIfExists(DrData, "energy_rate_output_on", false);
+    params.isGpWiseOutput = getParamIfExists(DrData, "gpwise", false);
+    params.isTermalPressureOn = getParamIfExists(DrData, "thermalpress", false);
+    params.backgroundType = getParamIfExists(DrData, "energy_rate_printtimeinterval", 1);
 
 
-    const YAML::Node& OutputParams = m_Data["output"];
-    Params.FaultOutputFlag = getParamIfExists(OutputParams, "faultoutputflag", false);
-    Params.OutputFilePrefix = getParamIfExists(OutputParams, "outputfile", std::string("data"));
-    Params.CheckPointBackend = getParamIfExists(OutputParams, "checkpointbackend", std::string("none"));
+    const YAML::Node& OutputParams = data["output"];
+    params.faultOutputFlag = getParamIfExists(OutputParams, "faultoutputflag", false);
+    params.outputFilePrefix = getParamIfExists(OutputParams, "outputfile", std::string("data"));
+    params.checkPointBackend = getParamIfExists(OutputParams, "checkpointbackend", std::string("none"));
 
 #ifdef USE_HDF
-    Params.XdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("hdf5"));
+    params.xdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("hdf5"));
 #else
-    Params.XdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("posix"));
+    params.xdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("posix"));
 #endif
 
-    return Params;
+    return params;
   }
 
 
   PickpointParamsT getPickPointParams() {
     using namespace initializers;
-    PickpointParamsT PpParams{};
+    PickpointParamsT ppParams{};
 
 
-    if (!m_Data["pickpoint"]) {
+    if (!data["pickpoint"]) {
       throw std::runtime_error("pickpoint output parameters for dynamic rupture is not provided");
     }
 
-    const YAML::Node& PpData = m_Data["pickpoint"];
-    PpParams.PrintTimeInterval = getParamIfExists(PpData, "printtimeinterval", 1);
-    PpParams.NumOutputPoints = getParamIfExists(PpData, "noutpoints", 0);
-    PpParams.PPFileName = getParamIfExists(PpData, "ppfilename", std::string());
+    const YAML::Node& ppData = data["pickpoint"];
+    ppParams.printTimeInterval = getParamIfExists(ppData, "printtimeinterval", 1);
+    ppParams.numOutputPoints = getParamIfExists(ppData, "noutpoints", 0);
+    ppParams.ppFileName = getParamIfExists(ppData, "ppfilename", std::string());
 
-    if (m_Data["outputmask"]) {
-      convertStringToMask(m_Data["outputmask"].as<std::string>(), PpParams.OutputMask);
+    if (data["outputmask"]) {
+      convertStringToMask(data["outputmask"].as<std::string>(), ppParams.OutputMask);
     }
 
-    return PpParams;
+    return ppParams;
   }
 
 
   ElementwiseFaultParamsT getElementwiseFaultParams() {
     using namespace initializers;
 
-    ElementwiseFaultParamsT EwParams{};
+    ElementwiseFaultParamsT ewParams{};
 
-    if (!m_Data["elementwise"]) {
+    if (!data["elementwise"]) {
       throw std::runtime_error("elementwise fault output parameters for dynamic rupture is not provided");
     }
 
-    const YAML::Node& EwData = m_Data["elementwise"];
+    const YAML::Node& ewData = data["elementwise"];
 
-    EwParams.PrintTimeInterval = getParamIfExists(EwData, "printtimeinterval", 2);
-    EwParams.PrintTimeIntervalSec = getParamIfExists(EwData, "printtimeinterval_sec", 1.0);
-    EwParams.PrintIntervalCriterion = getParamIfExists(EwData, "printintervalcriterion", 1);
-    EwParams.MaxPickStore = getParamIfExists(EwData, "maxpickstore", 50);
-    EwParams.RefinementStrategy = getParamIfExists(EwData, "refinement_strategy", 2);
-    EwParams.Refinement = getParamIfExists(EwData, "refinement", 2);
+    ewParams.printTimeInterval = getParamIfExists(ewData, "printtimeinterval", 2);
+    ewParams.printTimeIntervalSec = getParamIfExists(ewData, "printtimeinterval_sec", 1.0);
+    ewParams.printIntervalCriterion = getParamIfExists(ewData, "printintervalcriterion", 1);
+    ewParams.maxPickStore = getParamIfExists(ewData, "maxpickstore", 50);
+    ewParams.refinementStrategy = getParamIfExists(ewData, "refinement_strategy", 2);
+    ewParams.refinement = getParamIfExists(ewData, "refinement", 2);
 
-    if (EwData["outputmask"]) {
-      convertStringToMask(EwData["outputmask"].as<std::string>(), EwParams.OutputMask);
+    if (ewData["outputmask"]) {
+      convertStringToMask(ewData["outputmask"].as<std::string>(), ewParams.outputMask);
     }
 
-    return EwParams;
+    return ewParams;
   }
 
 
 private:
-  const YAML::Node& m_Data;
+  const YAML::Node& data;
 };
 
 #endif //SEISSOL_DRINITIALIZER_HPP

@@ -70,13 +70,13 @@ public:
 
     aux::forEach(drVars, assignMask);
 
-    seissol::memory::ManagedAllocator Allocator;
+    seissol::memory::ManagedAllocator allocator;
     const unsigned numElements = 1024;
-    auto allocateVariables = [numElements, &Allocator](auto& var, int) {
+    auto allocateVariables = [numElements, &allocator](auto& var, int) {
       if (var.isActive) {
         var.size = numElements;
         for (size_t dim = 0; dim < var.data.size(); ++dim) {
-          var.data[dim] = reinterpret_cast<real*>(Allocator.allocateMemory(numElements * sizeof(real),
+          var.data[dim] = reinterpret_cast<real*>(allocator.allocateMemory(numElements * sizeof(real),
                                                                            1,
                                                                            memory::Memkind::Standard));
         }
