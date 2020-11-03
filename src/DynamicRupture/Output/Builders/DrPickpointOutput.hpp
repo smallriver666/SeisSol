@@ -1,7 +1,7 @@
 #ifndef SEISSOL_PICKPOINTOUTPUT_HPP
 #define SEISSOL_PICKPOINTOUTPUT_HPP
 
-#include "DrDataTypes.hpp"
+#include "DynamicRupture/Output/DrDataTypes.hpp"
 #include "Geometry/MeshReader.h"
 
 namespace seissol {

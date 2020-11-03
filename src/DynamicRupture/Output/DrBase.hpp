@@ -3,8 +3,8 @@
 
 #include "Initializer/InputAux.hpp"
 #include "DynamicRupture/Output/DrParametersInitializer.hpp"
-#include "DynamicRupture/Output/DrElementWiseOutput.hpp"
-#include "DynamicRupture/Output/DrPickpointOutput.hpp"
+#include "DynamicRupture/Output/Builders/DrElementWiseOutput.hpp"
+#include "DynamicRupture/Output/Builders/DrPickpointOutput.hpp"
 #include <iostream>
 #include <memory>
 

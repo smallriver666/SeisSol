@@ -1,10 +1,10 @@
 #ifndef SEISSOL_DRELEMENTWISEOUTPUT_HPP
 #define SEISSOL_DRELEMENTWISEOUTPUT_HPP
 
-#include "DrDataTypes.hpp"
-#include "FaultRefiner/FaultRefiner.hpp"
+#include "DynamicRupture/Output/DrDataTypes.hpp"
+#include "DynamicRupture/Output/FaultRefiner/FaultRefiner.hpp"
 #include "Geometry/MeshReader.h"
-#include "DrOutputAux.hpp"
+#include "DynamicRupture/Output/DrOutputAux.hpp"
 #include "Parallel/MPI.h"
 
 namespace seissol {
@@ -51,7 +51,6 @@ public:
     initOutputVariables();
 
     /*
-    initOutputLabels();
     allocateOutputVariables();
     initOutputVariables();
     initRotationMatrices(FaultParams);
