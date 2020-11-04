@@ -42,7 +42,7 @@ namespace seissol {
 
       enum DirectionID {STRIKE = 0, DIP = 1, NORMAL = 2};
       enum ThermoID {PRESSURE = 0, TEMPERATURE = 1};
-      enum ParamID {FUNCTION = 0, STATE=1};
+      enum ParamID {FUNCTION = 0, STATE = 1};
 
       enum VariableID {SlipRate = 0,
                        TransientShierStress,

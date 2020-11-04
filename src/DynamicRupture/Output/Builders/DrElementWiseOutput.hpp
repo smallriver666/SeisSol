@@ -43,7 +43,7 @@ public:
 
   void init(const std::unordered_map<std::string, double*>& faultParams) {
     initReceiverLocations();
-    //assignNearestGaussianPoints(receiverPoints);
+    assignNearestGaussianPoints(receiverPoints);
     initOutputVariables();
 
     /*
@@ -238,6 +238,7 @@ private:
   size_t nDrPick;
   size_t nOutPoints;
   int localRank{-1};
+  //OutputState state;
   DrVarsT drVars;
 };
 

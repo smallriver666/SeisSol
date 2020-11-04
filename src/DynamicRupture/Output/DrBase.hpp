@@ -65,8 +65,15 @@ public:
         throw std::runtime_error("Unkown fault output type (e.g.3,4,5)");
     }
   }
+  void setDrData(initializers::LTSTree *userDrTree,
+                 initializers::DynamicRupture *drDescription) {
+    drTree = userDrTree;
+    dynRup = drDescription;
+  }
 
   void init(const std::unordered_map<std::string, double*>& FaultParams);
+  void initFaceToLtsMap();
+
   void writePickpointOutput();
   void updateElementwiseOutput();
 
@@ -102,15 +109,20 @@ public:
   virtual void postCompute(seissol::initializers::DynamicRupture &DynRup) = 0;
 
 protected:
-  void calcFaultOutput();
+
+  void calcFaultOutput(const OutputState& state);
 
   GeneralParamsT generalParams;
 
   std::unique_ptr<ElementWiseOutput> ewOutputBuilder{nullptr};
   OutputState ewOutputState{};
+  std::vector<std::pair<initializers::Layer*, size_t>> faceToLtsMap{};
 
   std::unique_ptr<PickpointOutput>  ppOutputBuilder{nullptr};
   OutputState ppOutputState{};
+
+  initializers::LTSTree *drTree{nullptr};
+  seissol::initializers::DynamicRupture *dynRup{nullptr};
 };
 
 #endif //SEISSOL_DROUTOUT_DRBASE_HPP

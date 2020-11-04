@@ -681,30 +681,26 @@ bool seissol::initializers::requiresNodalFlux(FaceType f) {
 
 //added by adrian
 void seissol::initializers::MemoryManager::initializeFrictionFactory() {
-  /*
-  dr::factory::AbstractFactory *Factory = seissol::dr::factory::getFactory(FrictionLaw);
-  std::tie(m_dynRup, m_DrInitializer, m_FrictonLaw, m_DrOutput) = Factory->produce();
-  delete Factory;    // prepare the data
-*/
+
   dr::factory::AbstractFactory *Factory = nullptr;
   try {
     // reading input provided by parameters.par
-    YAML::Node DynamicRupture = m_inputParams["dynamicrupture"];
-    int FrictionLawID = DynamicRupture["fl"] ? DynamicRupture["fl"].as<int>() : 0;
+    YAML::Node drSettings = m_inputParams["dynamicrupture"];
+    int FrictionLawID = drSettings["fl"] ? drSettings["fl"].as<int>() : 0;
     Friction_law_type FrictionLaw = Friction_law_type(FrictionLawID);
 
 
     Factory = seissol::dr::factory::getFactory(FrictionLaw);
     std::tie(m_dynRup, m_DrInitializer, m_FrictonLaw, m_DrOutput) = Factory->produce();
 
-    m_DrInitializer->setInputParam(DynamicRupture);
+    m_DrInitializer->setInputParam(drSettings);
 
     //TODO: do we actually need the parameters int these classes?
-    m_FrictonLaw->setInputParam(DynamicRupture);
+    m_FrictonLaw->setInputParam(drSettings);
     m_DrOutput->setInputParam(m_inputParams, seissol::SeisSol::main.meshReader());
+    m_DrOutput->setDrData(&m_dynRupTree, m_dynRup);
 
-
-    delete Factory;    // prepare the data
+    delete Factory;
   }
   catch (const std::exception& Error) {
     std::cerr << Error.what() << std::endl;

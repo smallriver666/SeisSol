@@ -714,6 +714,7 @@ void seissol::Interoperability::initializeCellLocalMatrices()
                                                            *seissol::SeisSol::main.getMemoryManager().getGlobalData(),
                                                            m_timeStepping );
 
+  seissol::SeisSol::main.getMemoryManager().getDrOutput()->initFaceToLtsMap();
   //added by adrian
   //indirect call
   //TODO: maybe put this function into the MemoryManager.cpp

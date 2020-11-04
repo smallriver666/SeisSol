@@ -80,18 +80,24 @@ void seissol::dr::output::Base::init(const std::unordered_map<std::string, doubl
                                                     printTime,
                                                     backendType);
 
-    auto& slipRate = std::get<VariableID::SlipRate>(ewOutputBuilder->drVars);
-    for (int dim = 0; dim < slipRate.dim(); ++dim) {
-      for (size_t element = 0; element < slipRate.size; ++element) {
-        slipRate[dim][element] = 100.0;
-      }
-    }
-
-    seissol::SeisSol::main.secondFaultWriter().write(1.0);
+    seissol::SeisSol::main.secondFaultWriter().setupCallbackObject(this);
   }
 
   if (ppOutputBuilder) {
     ppOutputBuilder->init();
+  }
+}
+
+void seissol::dr::output::Base::initFaceToLtsMap() {
+
+  faceToLtsMap.resize(drTree->getNumberOfCells(Ghost));
+  for (auto it = drTree->beginLeaf(initializers::LayerMask(Ghost));
+       it != drTree->endLeaf(); ++it) {
+
+    DRFaceInformation* faceInformation = it->var(dynRup->faceInformation);
+    for (size_t ltsFace = 0; ltsFace < it->getNumberOfCells(); ++ltsFace) {
+      faceToLtsMap[faceInformation[ltsFace].meshFace] = std::make_pair(&(*it), ltsFace);
+    }
   }
 }
 
@@ -101,10 +107,65 @@ void seissol::dr::output::Base::writePickpointOutput() {
 
 
 void seissol::dr::output::Base::updateElementwiseOutput() {
-
+  calcFaultOutput(ewOutputState);
 }
 
 
-void seissol::dr::output::Base::calcFaultOutput() {
+using DrPaddedArrayT = real (*)[seissol::init::QInterpolated::Stop[0]];
+void seissol::dr::output::Base::calcFaultOutput(const OutputState& state) {
 
+  {
+    auto &functionAndState = std::get<VariableID::FunctionAndState>(ewOutputBuilder->drVars);
+    if (functionAndState.isActive) {
+      for (size_t i = 0; i < functionAndState.size; ++i) {
+        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
+        auto mu = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->mu));
+
+        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
+        functionAndState[ParamID::FUNCTION][i] = mu[ltsMap.second][nearestGp];
+      }
+    }
+  }
+
+
+  {
+    auto &ruptureTime = std::get<VariableID::RuptureTime>(ewOutputBuilder->drVars);
+    if (ruptureTime.isActive) {
+      for (size_t i = 0; i < ruptureTime.size; ++i) {
+        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
+        auto rt = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->rupture_time));
+
+        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
+        ruptureTime[0][i] = rt[ltsMap.second][nearestGp];
+      }
+    }
+  }
+
+
+  {
+    auto &absoluteSlip = std::get<VariableID::AbsoluteSlip>(ewOutputBuilder->drVars);
+    if (absoluteSlip.isActive) {
+      for (size_t i = 0; i < absoluteSlip.size; ++i) {
+        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
+        auto slip = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->slip));
+
+        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
+        absoluteSlip[0][i] = slip[ltsMap.second][nearestGp];
+      }
+    }
+  }
+
+
+  {
+    auto &peakSlipsRate = std::get<VariableID::PeakSlipsRate>(ewOutputBuilder->drVars);
+    if (peakSlipsRate.isActive) {
+      for (size_t i = 0; i < peakSlipsRate.size; ++i) {
+        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
+        auto peakSR = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->peakSR));
+
+        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
+        peakSlipsRate[0][i] = peakSR[ltsMap.second][nearestGp];
+      }
+    }
+  }
 }
