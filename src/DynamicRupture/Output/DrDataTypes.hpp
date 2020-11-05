@@ -13,14 +13,21 @@ namespace seissol {
   namespace dr {
     namespace output {
 
+      template <int Dim>
+      constexpr bool isMultiDimVar() {
+        return (Dim > 1);
+      }
+
       template<int DIM>
       struct VarT {
         constexpr int dim() {return DIM;}
+
 
         real* operator[](int index) {
           assert(index < DIM && "access is out of the bounds");
           return data[index];
         }
+
 
         void releaseData() {
           if (isActive) {
@@ -32,7 +39,7 @@ namespace seissol {
 
         std::array<real*, DIM> data = {nullptr};
         bool isActive{false};
-        size_t size;
+        size_t size{};
       };
 
       using Var1D = VarT<1>;
@@ -178,6 +185,14 @@ namespace seissol {
       double distanceToNearestGp{std::numeric_limits<double>::max()};
     };
     using ReceiverPointsT = std::vector<ReceiverPointT>;
+
+    struct FaultDirectionsT {
+      VrtxCoords faceNormal{0.0, 0.0, 0.0};
+      VrtxCoords tangent1{0.0, 0.0, 0.0};
+      VrtxCoords tangent2{0.0, 0.0, 0.0};
+      VrtxCoords strike{0.0, 0.0, 0.0};
+      VrtxCoords dip{0.0, 0.0, 0.0};
+    };
 
     struct PlusMinusBasisFunctionsT {
       std::vector<real> plusSide;

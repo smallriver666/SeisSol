@@ -45,6 +45,7 @@ public:
     initReceiverLocations();
     assignNearestGaussianPoints(receiverPoints);
     initOutputVariables();
+    initFaultDirections();
 
     /*
     allocateOutputVariables();
@@ -172,6 +173,26 @@ public:
 
   }
 
+  void initFaultDirections() {
+    faultDirections.resize(geomParam.numSides);
+    const auto &faultInfo = meshReader->getFault();
+
+    auto copyVrtxCoords = [](VrtxCoords to, const VrtxCoords from) {
+      for (int i = 0; i < 3; ++i)
+        to[i] = from[i];
+    };
+
+    for (size_t index = 0; index < geomParam.numSides; ++index) {
+      copyVrtxCoords(faultDirections[index].faceNormal, faultInfo[index].normal);
+      copyVrtxCoords(faultDirections[index].tangent1, faultInfo[index].tangent1);
+      copyVrtxCoords(faultDirections[index].tangent2, faultInfo[index].tangent2);
+      computeStrikeAndDipVectors(faultDirections[index].faceNormal,
+                                 faultDirections[index].strike,
+                                 faultDirections[index].dip);
+    }
+  }
+
+
   void initRotationMatrices(const std::unordered_map<std::string, double*>& faultParams) {
     using namespace seissol::transformations;
     using RotationMatrixViewT = yateto::DenseTensorView<2, double, unsigned>;
@@ -183,9 +204,9 @@ public:
     // init Rotation Matrices
     const auto &faultInfo = meshReader->getFault();
     for (size_t index = 0; index < geomParam.numSides; ++index) {
-      const auto faceNormal = faultInfo[index].normal;
-      VrtxCoords strike = {0.0, 0.0, 0.0};
-      VrtxCoords dip = {0.0, 0.0, 0.0};
+      const auto faceNormal = faultDirections[index].faceNormal;
+      const auto strike = faultDirections[index].strike;
+      const auto dip = faultDirections[index].dip;
 
       computeStrikeAndDipVectors(faceNormal, strike, dip);
 
@@ -232,6 +253,7 @@ private:
   ConstantsT constants{};
   std::vector<int> outputLabels{};
   std::vector<std::vector<real>> m_RotationMatrices{};
+  std::vector<FaultDirectionsT> faultDirections{};
 
   const MeshReader* meshReader;
   bool isDrPickOutput{};

@@ -114,58 +114,73 @@ void seissol::dr::output::Base::updateElementwiseOutput() {
 using DrPaddedArrayT = real (*)[seissol::init::QInterpolated::Stop[0]];
 void seissol::dr::output::Base::calcFaultOutput(const OutputState& state) {
 
-  {
+  for (size_t i = 0; i < ewOutputBuilder->receiverPoints.size(); ++i) {
+    auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
+    const auto layer = ltsMap.first;
+    const auto ltsId = ltsMap.second;
+
+    auto mu = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->mu));
+    auto rt = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->rupture_time));
+    auto slip = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->slip));
+    auto peakSR = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->peakSR));
+
+    const auto nearestGaussPoint = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
+    const auto faceIndex = ewOutputBuilder->receiverPoints[i].faultFaceIndex;
+
+    const auto normal = ewOutputBuilder->faultDirections[faceIndex].faceNormal;
+    const auto tangent1 = ewOutputBuilder->faultDirections[faceIndex].tangent1;
+    const auto tangent2 = ewOutputBuilder->faultDirections[faceIndex].tangent2;
+    const auto strike = ewOutputBuilder->faultDirections[faceIndex].strike;
+    const auto dip = ewOutputBuilder->faultDirections[faceIndex].dip;
+
+
+
+
+
     auto &functionAndState = std::get<VariableID::FunctionAndState>(ewOutputBuilder->drVars);
     if (functionAndState.isActive) {
-      for (size_t i = 0; i < functionAndState.size; ++i) {
-        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
-        auto mu = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->mu));
-
-        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
-        functionAndState[ParamID::FUNCTION][i] = mu[ltsMap.second][nearestGp];
-      }
+      functionAndState[ParamID::FUNCTION][i] = mu[ltsId][nearestGaussPoint];
     }
-  }
 
 
-  {
     auto &ruptureTime = std::get<VariableID::RuptureTime>(ewOutputBuilder->drVars);
     if (ruptureTime.isActive) {
-      for (size_t i = 0; i < ruptureTime.size; ++i) {
-        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
-        auto rt = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->rupture_time));
-
-        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
-        ruptureTime[0][i] = rt[ltsMap.second][nearestGp];
-      }
+      ruptureTime[0][i] = rt[ltsId][nearestGaussPoint];
     }
-  }
 
 
-  {
     auto &absoluteSlip = std::get<VariableID::AbsoluteSlip>(ewOutputBuilder->drVars);
     if (absoluteSlip.isActive) {
-      for (size_t i = 0; i < absoluteSlip.size; ++i) {
-        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
-        auto slip = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->slip));
-
-        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
-        absoluteSlip[0][i] = slip[ltsMap.second][nearestGp];
-      }
+      absoluteSlip[0][i] = slip[ltsId][nearestGaussPoint];
     }
-  }
 
 
-  {
     auto &peakSlipsRate = std::get<VariableID::PeakSlipsRate>(ewOutputBuilder->drVars);
     if (peakSlipsRate.isActive) {
-      for (size_t i = 0; i < peakSlipsRate.size; ++i) {
-        auto ltsMap = faceToLtsMap[ewOutputBuilder->receiverPoints[i].faultFaceIndex];
-        auto peakSR = reinterpret_cast<DrPaddedArrayT>(ltsMap.first->var(dynRup->peakSR));
+      peakSlipsRate[0][i] = peakSR[ltsId][nearestGaussPoint];
+    }
 
-        const auto nearestGp = ewOutputBuilder->receiverPoints[i].nearestGpIndex;
-        peakSlipsRate[0][i] = peakSR[ltsMap.second][nearestGp];
-      }
+
+    auto &slipVectors = std::get<VariableID::Slip>(ewOutputBuilder->drVars);
+    if (slipVectors.isActive) {
+      VrtxCoords crossProduct = {0.0, 0.0, 0.0};
+      MeshTools::cross(strike, tangent1, crossProduct);
+
+      double cos1 = MeshTools::dot(strike, tangent1);
+      double scalarProd = MeshTools::dot(crossProduct, normal);
+
+      // Note: cos1**2 can be greater than 1.0 because of rounding errors -> min
+      double sin1 = std::sqrt(1.0 - std::min(1.0, cos1 * cos1));
+      sin1 = (scalarProd > 0) ? sin1 : - sin1;
+
+      auto slip1 = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->slip1));
+      auto slip2 = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->slip2));
+
+      slipVectors[DirectionID::STRIKE][i] = cos1 * slip1[ltsId][nearestGaussPoint] -
+                                            sin1 * slip2[ltsId][nearestGaussPoint];
+
+      slipVectors[DirectionID::DIP][i] = sin1 * slip1[ltsId][nearestGaussPoint] +
+                                         cos1 * slip2[ltsId][nearestGaussPoint];
     }
   }
 }

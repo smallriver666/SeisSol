@@ -40,20 +40,16 @@ public:
         break;
 
       case OutputType::AtPickpoint:
-        // readpar_faultAtPickpoint(EQN,BND,IC,DISC,IO,CalledFromStructCode)
         ppOutputBuilder.reset(new PickpointOutput);
         ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
         break;
 
       case OutputType::Elementwise:
-        // readpar_faultElementwise(EQN,BND,IC,DISC,IO,CalledFromStructCode)
         ewOutputBuilder.reset(new ElementWiseOutput);
         ewOutputBuilder->setParams(Reader.getElementwiseFaultParams(), &Mesher);
         break;
 
       case OutputType::AtPickpointAndElementwise:
-        // readpar_faultElementwise(EQN,BND,IC,DISC,IO,CalledFromStructCode)
-        // readpar_faultAtPickpoint(EQN,BND,IC,DISC,IO,CalledFromStructCode)
         ppOutputBuilder.reset(new PickpointOutput);
         ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
 
