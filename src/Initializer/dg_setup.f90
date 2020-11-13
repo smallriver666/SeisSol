@@ -588,6 +588,7 @@ CONTAINS
 #endif
 
     call c_interoperability_initializeMemoryLayout(clustering = disc%galerkin%clusteredLts,enableFreeSurfaceIntegration = enableFreeSurfaceIntegration )
+    call c_interoperability_bindFaultOutputManager()
 
   ! Initialize source terms
   select case(SOURCE%Type)

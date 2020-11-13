@@ -99,6 +99,9 @@ class seissol::time_stepping::TimeManager {
     
     //! Stopwatch
     LoopStatistics m_loopStatistics;
+
+    //!
+    dr::output::Base* m_faultOutputManager{};
     
     /**
      * Checks if the time stepping restrictions for this cluster and its neighbors changed.
@@ -146,6 +149,8 @@ class seissol::time_stepping::TimeManager {
     void addClusters( struct TimeStepping&               i_timeStepping,
                       struct MeshStructure*              i_meshStructure,
                       initializers::MemoryManager&       i_memoryManager );
+
+    void setFaultOutputManager(seissol::dr::output::Base* faultOutputManager);
 
     /**
      * Starts the communication thread.

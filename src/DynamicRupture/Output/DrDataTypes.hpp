@@ -3,6 +3,7 @@
 
 #include "Kernels/precision.hpp"
 #include "Geometry/MeshDefinition.h"
+#include "Initializer/tree/Layer.hpp"
 #include <vector>
 #include <array>
 #include <tuple>
@@ -88,13 +89,16 @@ namespace seissol {
         std::string outputFilePrefix{"data"};
         std::string xdmfWriterBackend{"hdf5"};
         std::string checkPointBackend{"none"};
+        real endTime{0.0};
+        size_t maxIteration{10000000};
       };
 
 
       struct PickpointParamsT {
-        std::array<bool, std::tuple_size<DrVarsT>::value> OutputMask{true, true, true}; // the rest is false by default
+        std::array<bool, std::tuple_size<DrVarsT>::value> outputMask{true, true, true}; // the rest is false by default
         int printTimeInterval{1};
         int numOutputPoints{0};
+        int maxPickStore{50};
         std::string ppFileName{};
       };
 
@@ -107,11 +111,6 @@ namespace seissol {
         std::array<bool, std::tuple_size<DrVarsT>::value> outputMask{true, true, true, true};
         int refinementStrategy{2};
         int refinement{2};
-      };
-
-
-      struct OutputState {
-        DrVarsT vars;
       };
     }
 
@@ -187,9 +186,9 @@ namespace seissol {
     using ReceiverPointsT = std::vector<ReceiverPointT>;
 
     struct FaultDirectionsT {
-      VrtxCoords faceNormal{0.0, 0.0, 0.0};
-      VrtxCoords tangent1{0.0, 0.0, 0.0};
-      VrtxCoords tangent2{0.0, 0.0, 0.0};
+      const double* faceNormal{};
+      const double* tangent1{};
+      const double* tangent2{};
       VrtxCoords strike{0.0, 0.0, 0.0};
       VrtxCoords dip{0.0, 0.0, 0.0};
     };
@@ -205,6 +204,18 @@ namespace seissol {
       real td0{0.0};
     };
     using ConstantsT = std::vector<ConstantT>;
+
+    struct OutputData {
+      output::DrVarsT vars;
+      std::vector<PlusMinusBasisFunctionsT> basisFunctions;
+      std::vector<ReceiverPointT> receiverPoints;
+      std::vector<std::vector<real>> rotationMatrices;
+      std::vector<FaultDirectionsT> faultDirections{};
+      std::vector<ConstantT> constrains;
+      std::vector<size_t> currentPick{};
+      std::vector<real> cachedTime{};
+      size_t maxPickStore;
+    };
   }
 }
 

@@ -146,6 +146,9 @@ target_compile_definitions(SeisSol-lib PUBLIC LOG_LEVEL=${LOG_LEVEL_MASTER}
 #    flags.extend(['-ip'])
 
 # Libs
+# c++ file system lib for old GCC compilers which implemented C++17 standard
+target_link_libraries(SeisSol-lib PUBLIC -lstdc++fs)
+
 find_package(yaml-cpp REQUIRED)
 target_link_libraries(SeisSol-lib PUBLIC ${YAML_CPP_LIBRARIES})
 target_include_directories(SeisSol-lib PUBLIC ${YAML_CPP_INCLUDE_DIR})

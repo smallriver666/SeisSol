@@ -80,6 +80,10 @@ extern "C" {
     e_interoperability.initializeMemoryLayout(clustering, enableFreeSurfaceIntegration);
   }
 
+  void c_interoperability_bindFaultOutputManager() {
+    e_interoperability.bindFaultOutputManager();
+  }
+
   void c_interoperability_initializeEasiBoundaries(char* fileName) {
     seissol::SeisSol::main.getMemoryManager().initializeEasiBoundaryReader(fileName);
   }
@@ -443,6 +447,12 @@ void seissol::Interoperability::initializeMemoryLayout(int clustering, bool enab
 
   // initialize face lts trees
   seissol::SeisSol::main.getMemoryManager().fixateBoundaryLtsTree();
+}
+
+
+void seissol::Interoperability::bindFaultOutputManager() {
+  auto faultOutputManager = seissol::SeisSol::main.getMemoryManager().getDrOutput();
+  seissol::SeisSol::main.timeManager().setFaultOutputManager(faultOutputManager);
 }
 
 

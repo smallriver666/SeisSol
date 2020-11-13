@@ -35,8 +35,22 @@ namespace seissol {
     void projectPointToFace(ExtVrtxCoords& point, const ExtTriangle& face, const VrtxCoords faceNormal);
 
     PlusMinusBasisFunctionsT getPlusMinusBasisFunctions(const VrtxCoords point,
-                                                        const VrtxCoords plusElementCoords[4],
-                                                        const VrtxCoords minusElementCoords[4]);
+                                                        const VrtxCoords* plusElementCoords[4],
+                                                        const VrtxCoords* minusElementCoords[4]);
+
+    std::vector<double> getAllVertices(const seissol::dr::ReceiverPointsT& receiverPoints);
+    std::vector<unsigned int> getCellConnectivity(const seissol::dr::ReceiverPointsT& receiverPoints);
+
+    template<int Size>
+    std::unique_ptr<int []> convertMaskFromBoolToInt(const std::array<bool, Size>& boolMask) {
+      auto intMask = std::unique_ptr<int []>(new int[boolMask.size()]);
+
+      for (size_t i = 0; i < boolMask.size(); ++i) {
+        intMask[i] = static_cast<int>(boolMask[i]);
+      }
+
+      return intMask;
+    }
   }
 }
 

@@ -31,37 +31,33 @@ public:
     auto deallocateVars = [](auto& var, int) {
       var.releaseData();
     };
-    aux::forEach(drVars, deallocateVars);
+    aux::forEach(outputData.vars, deallocateVars);
   }
 
   void setParams(const ElementwiseFaultParamsT& params, const MeshReader* reader) {
     elementwiseParams = params;
     meshReader = reader;
-    const int localRank = MPI::mpi.rank();
+    localRank = MPI::mpi.rank();
   }
 
 
   void init(const std::unordered_map<std::string, double*>& faultParams) {
     initReceiverLocations();
-    assignNearestGaussianPoints(receiverPoints);
+    assignNearestGaussianPoints(outputData.receiverPoints);
     initOutputVariables();
     initFaultDirections();
-
-    /*
-    allocateOutputVariables();
-    initOutputVariables();
-    initRotationMatrices(FaultParams);
-    */
+    initRotationMatrices();
+    initBasisFunctions();
   }
 
   void initOutputVariables() {
     auto assignMask = [this](auto& var, int index) {
       var.isActive = this->elementwiseParams.outputMask[index];
     };
-    aux::forEach(drVars, assignMask);
+    aux::forEach(outputData.vars, assignMask);
 
     auto allocateVariables = [this](auto& var, int) {
-      var.size = var.isActive ? this->receiverPoints.size() : 0;
+      var.size = var.isActive ? this->outputData.receiverPoints.size() : 0;
       if (var.isActive) {
         for (int dim = 0; dim < var.dim(); ++dim)
           var.data[dim] = new real[var.size];
@@ -71,7 +67,7 @@ public:
           var.data[dim] = nullptr;
       }
     };
-    aux::forEach(drVars, allocateVariables);
+    aux::forEach(outputData.vars, allocateVariables);
 
     real initialValue = 0.0;
     auto initVars = [initialValue](auto& var, int) {
@@ -82,7 +78,7 @@ public:
         }
       }
     };
-    aux::forEach(drVars, initVars);
+    aux::forEach(outputData.vars, initVars);
   }
 
   void initReceiverLocations() {
@@ -92,8 +88,6 @@ public:
     geomParam.numSides = meshReader->getFault().size();
     geomParam.numSubTriangles = faultRefiner->getNumSubTriangles();
     geomParam.numSubElements = std::pow(geomParam.numSubTriangles, elementwiseParams.refinement);
-    //m_Points.resize(geomParam.TotalNumReceivers);
-
 
     logInfo(localRank) << "CPP: Initialising Fault output. Refinement strategy: "
                     << elementwiseParams.refinementStrategy
@@ -146,67 +140,41 @@ public:
     }
 
     // retrieve all receivers from a fault face refiner
-    receiverPoints = faultRefiner->moveAllReceiverPoints();
+    outputData.receiverPoints = faultRefiner->moveAllReceiverPoints();
     faultRefiner.reset(nullptr);
 
-    isDrPickOutput = !receiverPoints.empty();
-    nDrPick = receiverPoints.size();
-    nOutPoints = receiverPoints.size();
+    nOutPoints = outputData.receiverPoints.size();
   }
 
-
-  void allocateOutputVariables() {
-    std::vector<real> currentPick(nDrPick);
-    std::vector<real> tmpTime(elementwiseParams.maxPickStore);
-    // std::vector<real> TmpState;
-    // OutVal
-    std::vector<real> rotationMatrix(nDrPick / geomParam.numSubTriangles, 0);
-    std::vector<ConstantT> constant(nDrPick);
-
-    // TODO: alloc DynRup_Constants
-    // TODO: alloc DynRup_Constants_GlobInd
-
-    // TODO: alloc CurrentPick
-    // TODO: alloc TmpTime
-    // TODO: alloc TmpState
-    // TODO: alloc rotmat
-
-  }
 
   void initFaultDirections() {
-    faultDirections.resize(geomParam.numSides);
+    outputData.faultDirections.resize(geomParam.numSides);
     const auto &faultInfo = meshReader->getFault();
 
-    auto copyVrtxCoords = [](VrtxCoords to, const VrtxCoords from) {
-      for (int i = 0; i < 3; ++i)
-        to[i] = from[i];
-    };
-
     for (size_t index = 0; index < geomParam.numSides; ++index) {
-      copyVrtxCoords(faultDirections[index].faceNormal, faultInfo[index].normal);
-      copyVrtxCoords(faultDirections[index].tangent1, faultInfo[index].tangent1);
-      copyVrtxCoords(faultDirections[index].tangent2, faultInfo[index].tangent2);
-      computeStrikeAndDipVectors(faultDirections[index].faceNormal,
-                                 faultDirections[index].strike,
-                                 faultDirections[index].dip);
+      outputData.faultDirections[index].faceNormal = faultInfo[index].normal;
+      outputData.faultDirections[index].tangent1 = faultInfo[index].tangent1;
+      outputData.faultDirections[index].tangent2 = faultInfo[index].tangent2;
+      computeStrikeAndDipVectors(outputData.faultDirections[index].faceNormal,
+                                 outputData.faultDirections[index].strike,
+                                 outputData.faultDirections[index].dip);
     }
   }
 
 
-  void initRotationMatrices(const std::unordered_map<std::string, double*>& faultParams) {
+  void initRotationMatrices() {
     using namespace seissol::transformations;
     using RotationMatrixViewT = yateto::DenseTensorView<2, double, unsigned>;
 
     // allocate Rotation Matrices
     // Note: several receiver can share the same rotation matrix
-    m_RotationMatrices.resize(geomParam.numSides);
+    outputData.rotationMatrices.resize(geomParam.numSides);
 
     // init Rotation Matrices
-    const auto &faultInfo = meshReader->getFault();
     for (size_t index = 0; index < geomParam.numSides; ++index) {
-      const auto faceNormal = faultDirections[index].faceNormal;
-      const auto strike = faultDirections[index].strike;
-      const auto dip = faultDirections[index].dip;
+      const auto faceNormal = outputData.faultDirections[index].faceNormal;
+      const auto strike = outputData.faultDirections[index].strike;
+      const auto dip = outputData.faultDirections[index].dip;
 
       computeStrikeAndDipVectors(faceNormal, strike, dip);
 
@@ -214,9 +182,35 @@ public:
       RotationMatrixViewT rotationMatrixView(const_cast<real*>(rotationMatrix.data()), {6, 6});
 
       symmetricTensor2RotationMatrix(faceNormal, strike, dip, rotationMatrixView, 0, 0);
-      m_RotationMatrices[index] = std::move(rotationMatrix);
+      outputData.rotationMatrices[index] = std::move(rotationMatrix);
     }
   }
+
+
+  void initBasisFunctions() {
+    const auto &faultInfo = meshReader->getFault();
+    const auto &elementsInfo = meshReader->getElements();
+    const auto &verticesInfo = meshReader->getVertices();
+
+    for (const auto& point: outputData.receiverPoints) {
+      auto elementIndex = faultInfo[point.faultFaceIndex].element;
+      auto neighborElementIndex = faultInfo[point.faultFaceIndex].neighborElement;
+
+      const VrtxCoords* elemCoords[4] {};
+      const VrtxCoords*  neighborElemCoords[4]{};
+
+      for (int i = 0; i < 4; ++i) {
+        elemCoords[i] = &(verticesInfo[elementsInfo[elementIndex].vertices[i]].coords);
+        neighborElemCoords[i] = &(verticesInfo[elementsInfo[neighborElementIndex].vertices[i]].coords);
+      }
+
+      outputData.basisFunctions.emplace_back(getPlusMinusBasisFunctions(point.global.coords,
+                                                                        elemCoords,
+                                                                        neighborElemCoords));
+
+    }
+  }
+
 
   void initConstrains() {
     /*
@@ -227,41 +221,18 @@ public:
     */
   }
 
-
-  void computeBasisFunctionsAtReceiver() {
-    // TODO: compute self Basis functions
-    // TODO: compute neighbor Basis functions
-  }
-
   void evaluateInitialStressInFaultCS() {
     // Compute initialStressInFaultCS
   }
 
-  /*
-  void initOutputVariables() {
-    // TODO: eval_faultreceiver
-    // TODO: create_fault_rotationmatrix
-  }
-  */
-
 private:
-
   ElementwiseFaultParamsT elementwiseParams;
   FaultGeomParamsT geomParam;
 
-  ReceiverPointsT receiverPoints{};
-  ConstantsT constants{};
-  std::vector<int> outputLabels{};
-  std::vector<std::vector<real>> m_RotationMatrices{};
-  std::vector<FaultDirectionsT> faultDirections{};
-
   const MeshReader* meshReader;
-  bool isDrPickOutput{};
-  size_t nDrPick;
   size_t nOutPoints;
   int localRank{-1};
-  //OutputState state;
-  DrVarsT drVars;
+  OutputData outputData;
 };
 
 #endif //SEISSOL_DRELEMENTWISEOUTPUT_HPP

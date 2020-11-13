@@ -25,29 +25,34 @@ public:
       throw std::runtime_error("dynamic rupture params. is not provided");
     }
 
-    const YAML::Node& DrData = data["dynamicrupture"];
-    params.outputPointType = static_cast<OutputType>(getParamIfExists(DrData, "outputpointtype", 3));
-    params.slipRateOutputType = getParamIfExists(DrData, "sliprateoutputtype", 1);
-    params.frictionLawType = getParamIfExists(DrData, "fl", 0);
-    params.backgroundType = getParamIfExists(DrData, "backgroundtype", 0);
-    params.isRfOutputOn = getParamIfExists(DrData, "rf_output_on", false);
-    params.isDsOutputOn = getParamIfExists(DrData, "ds_output_on", false);
-    params.isMagnitudeOutputOn = getParamIfExists(DrData, "magnitude_output_on", false);
-    params.isEnergyRateOutputOn = getParamIfExists(DrData, "energy_rate_output_on", false);
-    params.isGpWiseOutput = getParamIfExists(DrData, "gpwise", false);
-    params.isTermalPressureOn = getParamIfExists(DrData, "thermalpress", false);
-    params.backgroundType = getParamIfExists(DrData, "energy_rate_printtimeinterval", 1);
+    const YAML::Node& drSettings = data["dynamicrupture"];
+    params.outputPointType = static_cast<OutputType>(getParamIfExists(drSettings, "outputpointtype", 3));
+    params.slipRateOutputType = getParamIfExists(drSettings, "sliprateoutputtype", 1);
+    params.frictionLawType = getParamIfExists(drSettings, "fl", 0);
+    params.backgroundType = getParamIfExists(drSettings, "backgroundtype", 0);
+    params.isRfOutputOn = getParamIfExists(drSettings, "rf_output_on", false);
+    params.isDsOutputOn = getParamIfExists(drSettings, "ds_output_on", false);
+    params.isMagnitudeOutputOn = getParamIfExists(drSettings, "magnitude_output_on", false);
+    params.isEnergyRateOutputOn = getParamIfExists(drSettings, "energy_rate_output_on", false);
+    params.isGpWiseOutput = getParamIfExists(drSettings, "gpwise", false);
+    params.isTermalPressureOn = getParamIfExists(drSettings, "thermalpress", false);
+    params.backgroundType = getParamIfExists(drSettings, "energy_rate_printtimeinterval", 1);
 
 
-    const YAML::Node& OutputParams = data["output"];
-    params.faultOutputFlag = getParamIfExists(OutputParams, "faultoutputflag", false);
-    params.outputFilePrefix = getParamIfExists(OutputParams, "outputfile", std::string("data"));
-    params.checkPointBackend = getParamIfExists(OutputParams, "checkpointbackend", std::string("none"));
+    const YAML::Node& outputParams = data["output"];
+    params.faultOutputFlag = getParamIfExists(outputParams, "faultoutputflag", false);
+    params.outputFilePrefix = getParamIfExists(outputParams, "outputfile", std::string("data"));
+    params.checkPointBackend = getParamIfExists(outputParams, "checkpointbackend", std::string("none"));
+
+
+    const YAML::Node& abortCriteriaParams = data["abortcriteria"];
+    params.endTime = getParamIfExists(abortCriteriaParams, "endtime", 15.0);
+    params.maxIteration = getParamIfExists(abortCriteriaParams, "maxiteration", 10000000);
 
 #ifdef USE_HDF
-    params.xdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("hdf5"));
+    params.xdmfWriterBackend = getParamIfExists(outputParams, "xdmfwriterbackend", std::string("hdf5"));
 #else
-    params.xdmfWriterBackend = getParamIfExists(OutputParams, "xdmfwriterbackend", std::string("posix"));
+    params.xdmfWriterBackend = getParamIfExists(outputParams, "xdmfwriterbackend", std::string("posix"));
 #endif
 
     return params;
@@ -69,7 +74,7 @@ public:
     ppParams.ppFileName = getParamIfExists(ppData, "ppfilename", std::string());
 
     if (data["outputmask"]) {
-      convertStringToMask(data["outputmask"].as<std::string>(), ppParams.OutputMask);
+      convertStringToMask(data["outputmask"].as<std::string>(), ppParams.outputMask);
     }
 
     return ppParams;

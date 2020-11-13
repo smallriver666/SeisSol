@@ -166,17 +166,17 @@ namespace seissol {
     }
 
     PlusMinusBasisFunctionsT getPlusMinusBasisFunctions(const VrtxCoords pointCoords,
-                                                        const VrtxCoords plusElementCoords[4],
-                                                        const VrtxCoords minusElementCoords[4]) {
+                                                        const VrtxCoords* plusElementCoords[4],
+                                                        const VrtxCoords* minusElementCoords[4]) {
 
       PlusMinusBasisFunctionsT basisFunctions{};
       Eigen::Vector3d point(pointCoords[0], pointCoords[1], pointCoords[2]);
 
       {
-        auto plusXiEtaZeta = transformations::tetrahedronGlobalToReference(plusElementCoords[0],
-                                                                           plusElementCoords[1],
-                                                                           plusElementCoords[2],
-                                                                           plusElementCoords[3],
+        auto plusXiEtaZeta = transformations::tetrahedronGlobalToReference(*plusElementCoords[0],
+                                                                           *plusElementCoords[1],
+                                                                           *plusElementCoords[2],
+                                                                           *plusElementCoords[3],
                                                                            point);
 
         basisFunction::SampledBasisFunctions<real> sampler(CONVERGENCE_ORDER,
@@ -187,10 +187,10 @@ namespace seissol {
       }
 
       {
-        auto minusXiEtaZeta = transformations::tetrahedronGlobalToReference(minusElementCoords[0],
-                                                                            minusElementCoords[1],
-                                                                            minusElementCoords[2],
-                                                                            minusElementCoords[3],
+        auto minusXiEtaZeta = transformations::tetrahedronGlobalToReference(*minusElementCoords[0],
+                                                                            *minusElementCoords[1],
+                                                                            *minusElementCoords[2],
+                                                                            *minusElementCoords[3],
                                                                             point);
 
         basisFunction::SampledBasisFunctions<real> sampler(CONVERGENCE_ORDER,
@@ -201,6 +201,35 @@ namespace seissol {
       }
 
       return basisFunctions;
+    }
+
+
+    std::vector<double> getAllVertices(const seissol::dr::ReceiverPointsT& receiverPoints) {
+      std::vector<double> vertices(3 * (3  * receiverPoints.size()), 0.0);
+
+      for (size_t pointIndex{0}; pointIndex < receiverPoints.size(); ++pointIndex) {
+        for (int vertexIndex{0}; vertexIndex < 3; ++vertexIndex) {
+          const size_t globalVertexIndex = 3 * pointIndex + vertexIndex;
+
+          vertices[3 * globalVertexIndex] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].x;
+          vertices[3 * globalVertexIndex + 1] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].y;
+          vertices[3 * globalVertexIndex + 2] = receiverPoints[pointIndex].globalSubTet.points[vertexIndex].z;
+        }
+      }
+      return vertices;
+    }
+
+
+    std::vector<unsigned int> getCellConnectivity(const seissol::dr::ReceiverPointsT& receiverPoints) {
+      std::vector<unsigned int> cells(3 * receiverPoints.size());
+
+      for (size_t pointIndex{0}; pointIndex < receiverPoints.size(); ++pointIndex) {
+        for (int vertexIndex{0}; vertexIndex < 3; ++vertexIndex) {
+          const size_t globalVertexIndex = 3 * pointIndex + vertexIndex;
+          cells[globalVertexIndex] = globalVertexIndex;
+        }
+      }
+      return cells;
     }
   }
 }

@@ -70,7 +70,8 @@ public:
   void init(const std::unordered_map<std::string, double*>& FaultParams);
   void initFaceToLtsMap();
 
-  void writePickpointOutput();
+  void writePickpointOutput(double time, double dt);
+  bool isAtPickpoint(double time, double dt);
   void updateElementwiseOutput();
 
 
@@ -105,20 +106,26 @@ public:
   virtual void postCompute(seissol::initializers::DynamicRupture &DynRup) = 0;
 
 protected:
+  void initEwOutput(const std::unordered_map<std::string, double*>& FaultParams);
+  void initPickpointOutput();
 
-  void calcFaultOutput(const OutputState& state);
+  std::string constructPpReveiverFileName(int receiverGlobalIndex) const;
+  void calcFaultOutput(const OutputType type, OutputData& state, double time = 0.0);
 
   GeneralParamsT generalParams;
 
   std::unique_ptr<ElementWiseOutput> ewOutputBuilder{nullptr};
-  OutputState ewOutputState{};
-  std::vector<std::pair<initializers::Layer*, size_t>> faceToLtsMap{};
+  OutputData ewOutputData{};
+  //std::vector<std::pair<initializers::Layer*, size_t>> faceToLtsMap{};
 
   std::unique_ptr<PickpointOutput>  ppOutputBuilder{nullptr};
-  OutputState ppOutputState{};
+  OutputData ppOutputState{};
 
   initializers::LTSTree *drTree{nullptr};
   seissol::initializers::DynamicRupture *dynRup{nullptr};
+
+  std::vector<std::pair<initializers::Layer*, size_t>> faceToLtsMap{};
+  size_t iterationStep{0};
 };
 
 #endif //SEISSOL_DROUTOUT_DRBASE_HPP
