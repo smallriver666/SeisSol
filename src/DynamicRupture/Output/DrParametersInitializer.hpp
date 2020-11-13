@@ -73,8 +73,8 @@ public:
     ppParams.numOutputPoints = getParamIfExists(ppData, "noutpoints", 0);
     ppParams.ppFileName = getParamIfExists(ppData, "ppfilename", std::string());
 
-    if (data["outputmask"]) {
-      convertStringToMask(data["outputmask"].as<std::string>(), ppParams.outputMask);
+    if (ppData["outputmask"]) {
+      convertStringToMask(ppData["outputmask"].as<std::string>(), ppParams.outputMask);
     }
 
     return ppParams;

@@ -91,9 +91,16 @@ void seissol::dr::output::Base::initPickpointOutput() {
 
   std::stringstream baseHeader;
   baseHeader << "VARIABLES = \"Time\"";
-  auto collectVariableNames = [&baseHeader](auto& var, int i) {
+  size_t labelCounter = 0;
+  auto collectVariableNames = [&baseHeader, &labelCounter](auto& var, int i) {
     if (var.isActive) {
-      baseHeader << " ,\"" << writer::FaultWriterExecutor::getLabelName(i) << '\"';
+      for (int dim = 0; dim < var.dim(); ++dim) {
+        baseHeader << " ,\"" << writer::FaultWriterExecutor::getLabelName(labelCounter) << '\"';
+        ++labelCounter;
+      }
+    }
+    else {
+      labelCounter += var.dim();
     }
   };
   aux::forEach(ppOutputBuilder->outputData.vars, collectVariableNames);
@@ -172,11 +179,11 @@ void seissol::dr::output::Base::writePickpointOutput(double time, double dt) {
 
       // TODO: if (currentPick(index) >= maxPickStore)
       std::stringstream data;
-      data << makeFormatted(time) << ' ';
+      data << makeFormatted(time) << '\t';
       auto recordResults = [index, &data](auto& var, int) {
         if (var.isActive) {
           for (int dim = 0; dim < var.dim(); ++dim) {
-            data << makeFormatted(var[dim][index]) << ' ';
+            data << makeFormatted(var[dim][index]) << '\t';
           }
         }
       };

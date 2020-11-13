@@ -55,7 +55,7 @@ public:
 
       ReceiverPointT point{};
       for (int i = 0; i < 3; ++i) {
-        point.global.coords[0] = coords[0];
+        point.global.coords[i] = coords[i];
       }
 
       outputData.receiverPoints.push_back(point);
