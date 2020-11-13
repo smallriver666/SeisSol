@@ -48,6 +48,7 @@ public:
     initFaultDirections();
     initRotationMatrices();
     initBasisFunctions();
+    initTimeCaching();
   }
 
   void initOutputVariables() {
@@ -211,6 +212,11 @@ public:
     }
   }
 
+
+  void initTimeCaching() {
+    outputData.maxPickStore = 1;
+    outputData.currentPick = 0;
+  }
 
   void initConstrains() {
     /*

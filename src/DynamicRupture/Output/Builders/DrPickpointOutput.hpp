@@ -119,8 +119,8 @@ public:
 
   void initTimeCaching() {
     outputData.maxPickStore = pickpointParams.maxPickStore;
-    outputData.currentPick.resize(outputData.receiverPoints.size(), 0);
-    outputData.cachedTime.resize(outputData.receiverPoints.size(), 0.0);
+    outputData.cachedTime.resize(outputData.maxPickStore, 0.0);
+    outputData.currentPick = 0;
   }
 
 private:

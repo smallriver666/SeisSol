@@ -106,7 +106,6 @@ void seissol::dr::output::Base::initPickpointOutput() {
   aux::forEach(ppOutputBuilder->outputData.vars, collectVariableNames);
 
   auto& outputData = ppOutputBuilder->outputData;
-  size_t counter = 0;
   for (const auto& point: outputData.receiverPoints) {
     const size_t globalIndex = point.globalReceiverIndex;
     auto fileName = constructPpReveiverFileName(globalIndex);
@@ -174,30 +173,38 @@ void seissol::dr::output::Base::writePickpointOutput(double time, double dt) {
   if (this->isAtPickpoint(time, dt)) {
 
     auto& outputData = ppOutputBuilder->outputData;
-    calcFaultOutput(OutputType::AtPickpoint, outputData);
-    for (size_t index = 0; index < outputData.receiverPoints.size(); ++index) {
+    calcFaultOutput(OutputType::AtPickpoint, outputData, time);
 
-      // TODO: if (currentPick(index) >= maxPickStore)
-      std::stringstream data;
-      data << makeFormatted(time) << '\t';
-      auto recordResults = [index, &data](auto& var, int) {
-        if (var.isActive) {
-          for (int dim = 0; dim < var.dim(); ++dim) {
-            data << makeFormatted(var[dim][index]) << '\t';
-          }
+    const bool isMaxCacheLevel = outputData.currentPick > ppOutputBuilder->pickpointParams.maxPickStore;
+    const bool isCloseToEnd = (generalParams.endTime - time) < dt * 1.005;
+    if (isMaxCacheLevel || isCloseToEnd) {
+      for (size_t pointId = 0; pointId < outputData.receiverPoints.size(); ++pointId) {
+
+        std::stringstream data;
+        for (size_t level = 0; level < outputData.currentPick; ++level) {
+          data << makeFormatted(outputData.cachedTime[level]) << '\t';
+          auto recordResults = [pointId, level, &data](auto &var, int) {
+            if (var.isActive) {
+              for (int dim = 0; dim < var.dim(); ++dim) {
+                data << makeFormatted(var[dim][pointId]) << '\t';
+              }
+            }
+          };
+          aux::forEach(outputData.vars, recordResults);
+          data << '\n';
         }
-      };
-      aux::forEach(outputData.vars, recordResults);
 
-      auto fileName = constructPpReveiverFileName(outputData.receiverPoints[index].globalReceiverIndex);
-      std::ofstream file(fileName, std::ios_base::app);
-      if (file.is_open()) {
-        file << data.str() << std::endl;
+        auto fileName = constructPpReveiverFileName(outputData.receiverPoints[pointId].globalReceiverIndex);
+        std::ofstream file(fileName, std::ios_base::app);
+        if (file.is_open()) {
+          file << data.str();
+        }
+        else {
+          logError() << "cannot open " << fileName;
+        }
+        file.close();
       }
-      else {
-        logError() << "cannot open " << fileName;
-      }
-      file.close();
+      outputData.currentPick = 0;
     }
   }
   iterationStep += 1;
@@ -212,8 +219,8 @@ void seissol::dr::output::Base::updateElementwiseOutput() {
 using DrPaddedArrayT = real (*)[seissol::init::QInterpolated::Stop[0]];
 void seissol::dr::output::Base::calcFaultOutput(const OutputType type, OutputData& outputData, double time) {
 
+  size_t cacheLevel = (type == OutputType::AtPickpoint) ? outputData.currentPick : 0;
   for (size_t i = 0; i < outputData.receiverPoints.size(); ++i) {
-    size_t cacheLevel = (type == OutputType::AtPickpoint) ? outputData.currentPick[i] : 0;
 
     auto ltsMap = faceToLtsMap[outputData.receiverPoints[i].faultFaceIndex];
     const auto layer = ltsMap.first;
@@ -278,10 +285,10 @@ void seissol::dr::output::Base::calcFaultOutput(const OutputType type, OutputDat
       slipVectors[DirectionID::DIP][i] = sin1 * slip1[ltsId][nearestGaussPoint] +
                                          cos1 * slip2[ltsId][nearestGaussPoint];
     }
+  }
 
-    if (type == OutputType::AtPickpoint) {
-      outputData.currentPick[i] += 1;
-      outputData.cachedTime[i] = time;
-    }
+  if (type == OutputType::AtPickpoint) {
+    outputData.cachedTime[outputData.currentPick] = time;
+    outputData.currentPick += 1;
   }
 }

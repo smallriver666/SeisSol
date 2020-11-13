@@ -212,9 +212,9 @@ namespace seissol {
       std::vector<std::vector<real>> rotationMatrices;
       std::vector<FaultDirectionsT> faultDirections{};
       std::vector<ConstantT> constrains;
-      std::vector<size_t> currentPick{};
-      std::vector<real> cachedTime{};
-      size_t maxPickStore;
+      std::vector<double> cachedTime{};
+      size_t currentPick{0};
+      size_t maxPickStore{50};
     };
   }
 }
