@@ -44,12 +44,20 @@ public:
   void init(const std::unordered_map<std::string, double*>& faultParams) {
     initReceiverLocations();
     assignNearestGaussianPoints(outputData.receiverPoints);
+    initTimeCaching();
     initOutputVariables();
     initFaultDirections();
     initRotationMatrices();
     initBasisFunctions();
-    initTimeCaching();
+    outputData.isActive = true;
   }
+
+
+  void initTimeCaching() {
+    outputData.maxCacheLevel = ElementWiseOutput::maxAllowedCacheLevel;
+    outputData.currentCacheLevel = 0;
+  }
+
 
   void initOutputVariables() {
     auto assignMask = [this](auto& var, int index) {
@@ -58,28 +66,10 @@ public:
     aux::forEach(outputData.vars, assignMask);
 
     auto allocateVariables = [this](auto& var, int) {
-      var.size = var.isActive ? this->outputData.receiverPoints.size() : 0;
-      if (var.isActive) {
-        for (int dim = 0; dim < var.dim(); ++dim)
-          var.data[dim] = new real[var.size];
-      }
-      else {
-        for (int dim = 0; dim < var.dim(); ++dim)
-          var.data[dim] = nullptr;
-      }
+      var.maxCacheLevel = outputData.maxCacheLevel;
+      var.allocateData(this->outputData.receiverPoints.size());
     };
     aux::forEach(outputData.vars, allocateVariables);
-
-    real initialValue = 0.0;
-    auto initVars = [initialValue](auto& var, int) {
-      if (var.isActive) {
-        for (int dim = 0; dim < var.dim(); ++dim) {
-          for (size_t i = 0; i < var.size; ++i)
-            var[dim][i] = initialValue;
-        }
-      }
-    };
-    aux::forEach(outputData.vars, initVars);
   }
 
   void initReceiverLocations() {
@@ -212,12 +202,6 @@ public:
     }
   }
 
-
-  void initTimeCaching() {
-    outputData.maxPickStore = 1;
-    outputData.currentPick = 0;
-  }
-
   void initConstrains() {
     /*
     for (const auto& Point: m_ReceiverPoints) {
@@ -231,6 +215,8 @@ public:
     // Compute initialStressInFaultCS
   }
 
+
+  inline const static size_t maxAllowedCacheLevel = 1;
 private:
   ElementwiseFaultParamsT elementwiseParams;
   FaultGeomParamsT geomParam;

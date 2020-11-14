@@ -9,26 +9,50 @@
 #include <tuple>
 #include <cassert>
 #include <limits>
+#include <cstring>
 
 namespace seissol {
   namespace dr {
     namespace output {
 
-      template <int Dim>
-      constexpr bool isMultiDimVar() {
-        return (Dim > 1);
-      }
-
       template<int DIM>
       struct VarT {
         constexpr int dim() {return DIM;}
 
-
-        real* operator[](int index) {
-          assert(index < DIM && "access is out of the bounds");
-          return data[index];
+        real* operator[](int dim) {
+          assert(dim < DIM && "access is out of the DIM. bounds");
+          return data[dim];
         }
 
+        real& operator()(int dim, size_t level, size_t index) {
+          assert(dim < DIM && "access is out of DIM. bounds");
+          assert(level < maxCacheLevel && "access is out of cache bounds");
+          assert(index < size && "access is out of size bounds");
+          return data[dim][index + level * size];
+        }
+
+        real& operator()(size_t level, size_t index) {
+          static_assert(DIM == 1, "access of the overload is allowed only for 1 dim variables");
+          assert(level < maxCacheLevel && "access is out of cache bounds");
+          assert(index < size && "access is out of size bounds");
+          return data[0][index + level * size];
+        }
+
+        // allocates data for a var (for all dimensions and cache levels) initialized to zeros
+        // if var is active. Otherwise, inits with nullptr
+        void allocateData(size_t dataSize) {
+          size = dataSize;
+          if (isActive) {
+            for (int dim = 0; dim < DIM; ++dim) {
+              data[dim] = new real[size * maxCacheLevel];
+              std::memset(static_cast<void *>(data[dim]), 0, size * maxCacheLevel * sizeof(real));
+            }
+          }
+          else {
+            for (int dim = 0; dim < DIM; ++dim)
+              data[dim] = nullptr;
+          }
+        }
 
         void releaseData() {
           if (isActive) {
@@ -38,9 +62,10 @@ namespace seissol {
           }
         }
 
-        std::array<real*, DIM> data = {nullptr};
+        std::array<real*, DIM> data{};
         bool isActive{false};
         size_t size{};
+        size_t maxCacheLevel{1};
       };
 
       using Var1D = VarT<1>;
@@ -213,8 +238,9 @@ namespace seissol {
       std::vector<FaultDirectionsT> faultDirections{};
       std::vector<ConstantT> constrains;
       std::vector<double> cachedTime{};
-      size_t currentPick{0};
-      size_t maxPickStore{50};
+      size_t currentCacheLevel{0};
+      size_t maxCacheLevel{50};
+      bool isActive{false};
     };
   }
 }

@@ -32,12 +32,13 @@ public:
     readCoordsFromFile();
     initReceiverLocations();
     initFaultDirections();
+    initTimeCaching();
     initOutputVariables();
     // findElementsContainingPoints();
     // initPointsIndices();
     // projectPointsToFaces();
     // findClosestGpPoint();
-    initTimeCaching();
+    outputData.isActive = true;
   }
 
   void readCoordsFromFile() {
@@ -69,35 +70,24 @@ public:
     }
   }
 
+  void initTimeCaching() {
+    outputData.maxCacheLevel = pickpointParams.maxPickStore;
+    outputData.cachedTime.resize(outputData.maxCacheLevel, 0.0);
+    outputData.currentCacheLevel = 0;
+  }
+
   void initOutputVariables() {
+
     auto assignMask = [this](auto& var, int index) {
       var.isActive = this->pickpointParams.outputMask[index];
     };
     aux::forEach(outputData.vars, assignMask);
 
     auto allocateVariables = [this](auto& var, int) {
-      var.size = var.isActive ? this->outputData.receiverPoints.size() : 0;
-      if (var.isActive) {
-        for (int dim = 0; dim < var.dim(); ++dim)
-          var.data[dim] = new real[var.size];
-      }
-      else {
-        for (int dim = 0; dim < var.dim(); ++dim)
-          var.data[dim] = nullptr;
-      }
+      var.maxCacheLevel = outputData.maxCacheLevel;
+      var.allocateData(this->outputData.receiverPoints.size());
     };
     aux::forEach(outputData.vars, allocateVariables);
-
-    real initialValue = 0.0;
-    auto initVars = [initialValue](auto& var, int) {
-      if (var.isActive) {
-        for (int dim = 0; dim < var.dim(); ++dim) {
-          for (size_t i = 0; i < var.size; ++i)
-            var[dim][i] = initialValue;
-        }
-      }
-    };
-    aux::forEach(outputData.vars, initVars);
   }
 
   void initFaultDirections() {
@@ -115,12 +105,6 @@ public:
                                  outputData.faultDirections[index].strike,
                                  outputData.faultDirections[index].dip);
     }
-  }
-
-  void initTimeCaching() {
-    outputData.maxPickStore = pickpointParams.maxPickStore;
-    outputData.cachedTime.resize(outputData.maxPickStore, 0.0);
-    outputData.currentPick = 0;
   }
 
 private:

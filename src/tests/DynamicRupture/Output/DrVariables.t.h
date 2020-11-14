@@ -36,7 +36,7 @@ public:
   void testTotalVariablesCount() {
     output::DrVarsT drVars;
 
-    std::array<bool, std::tuple_size<output::DrVarsT>::value> mask;
+    std::array<bool, std::tuple_size<output::DrVarsT>::value> mask{};
     for (size_t i = 0; i < std::tuple_size<output::DrVarsT>::value; ++i)
       mask[i] = true;
 
@@ -60,7 +60,7 @@ public:
   void testAllocationDeallocationOfVariables() {
     output::DrVarsT drVars;
 
-    std::array<bool, std::tuple_size<output::DrVarsT>::value> mask;
+    std::array<bool, std::tuple_size<output::DrVarsT>::value> mask{};
     for (size_t i = 0; i < std::tuple_size<output::DrVarsT>::value; ++i)
       mask[i] = true;
 
@@ -73,35 +73,30 @@ public:
     seissol::memory::ManagedAllocator allocator;
     const unsigned numElements = 1024;
     auto allocateVariables = [numElements, &allocator](auto& var, int) {
-      if (var.isActive) {
-        var.size = numElements;
-        for (size_t dim = 0; dim < var.data.size(); ++dim) {
-          var.data[dim] = reinterpret_cast<real*>(allocator.allocateMemory(numElements * sizeof(real),
-                                                                           1,
-                                                                           memory::Memkind::Standard));
-        }
-      }
-      else {
-        var.size = 0;
-        for (size_t dim = 0; dim < var.data.size(); ++dim) {
-          var.data[dim] = nullptr;
-        }
-      }
+      var.maxCacheLevel = 3;
+      var.allocateData(numElements);
     };
     aux::forEach(drVars, allocateVariables);
 
 
-    real initValue = 0.0;
-    auto initVariables = [initValue](auto& var, int) {
+    real assignValue = 0.0;
+    auto initVariables = [assignValue](auto& var, int) {
       if (var.isActive) {
         for (size_t dim = 0; dim < var.data.size(); ++dim) {
-          for (size_t i = 0; i < var.size; ++i) {
-            var[dim][i] = initValue;
+          for (size_t level = 0; level < var.maxCacheLevel; ++level) {
+            for (size_t i = 0; i < var.size; ++i) {
+              var(dim, level, i) = assignValue;
+            }
           }
         }
       }
     };
     aux::forEach(drVars, initVariables);
+
+    auto deallocateVariables = [](auto& var, int) {
+      var.releaseData();
+    };
+    aux::forEach(drVars, deallocateVariables);
   }
 };
 

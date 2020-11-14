@@ -175,18 +175,18 @@ void seissol::dr::output::Base::writePickpointOutput(double time, double dt) {
     auto& outputData = ppOutputBuilder->outputData;
     calcFaultOutput(OutputType::AtPickpoint, outputData, time);
 
-    const bool isMaxCacheLevel = outputData.currentPick > ppOutputBuilder->pickpointParams.maxPickStore;
+    const bool isMaxCacheLevel = outputData.currentCacheLevel >= static_cast<size_t>(ppOutputBuilder->pickpointParams.maxPickStore);
     const bool isCloseToEnd = (generalParams.endTime - time) < dt * 1.005;
     if (isMaxCacheLevel || isCloseToEnd) {
       for (size_t pointId = 0; pointId < outputData.receiverPoints.size(); ++pointId) {
 
         std::stringstream data;
-        for (size_t level = 0; level < outputData.currentPick; ++level) {
+        for (size_t level = 0; level < outputData.currentCacheLevel; ++level) {
           data << makeFormatted(outputData.cachedTime[level]) << '\t';
           auto recordResults = [pointId, level, &data](auto &var, int) {
             if (var.isActive) {
               for (int dim = 0; dim < var.dim(); ++dim) {
-                data << makeFormatted(var[dim][pointId]) << '\t';
+                data << makeFormatted(var(dim, level, pointId)) << '\t';
               }
             }
           };
@@ -204,7 +204,7 @@ void seissol::dr::output::Base::writePickpointOutput(double time, double dt) {
         }
         file.close();
       }
-      outputData.currentPick = 0;
+      outputData.currentCacheLevel = 0;
     }
   }
   iterationStep += 1;
@@ -219,7 +219,7 @@ void seissol::dr::output::Base::updateElementwiseOutput() {
 using DrPaddedArrayT = real (*)[seissol::init::QInterpolated::Stop[0]];
 void seissol::dr::output::Base::calcFaultOutput(const OutputType type, OutputData& outputData, double time) {
 
-  size_t cacheLevel = (type == OutputType::AtPickpoint) ? outputData.currentPick : 0;
+  size_t level = (type == OutputType::AtPickpoint) ? outputData.currentCacheLevel : 0;
   for (size_t i = 0; i < outputData.receiverPoints.size(); ++i) {
 
     auto ltsMap = faceToLtsMap[outputData.receiverPoints[i].faultFaceIndex];
@@ -242,25 +242,25 @@ void seissol::dr::output::Base::calcFaultOutput(const OutputType type, OutputDat
 
     auto &functionAndState = std::get<VariableID::FunctionAndState>(outputData.vars);
     if (functionAndState.isActive) {
-      functionAndState[ParamID::FUNCTION][i] = mu[ltsId][nearestGaussPoint];
+      functionAndState(ParamID::FUNCTION, level, i) = mu[ltsId][nearestGaussPoint];
     }
 
 
     auto &ruptureTime = std::get<VariableID::RuptureTime>(outputData.vars);
     if (ruptureTime.isActive) {
-      ruptureTime[0][i] = rt[ltsId][nearestGaussPoint];
+      ruptureTime(level, i) = rt[ltsId][nearestGaussPoint];
     }
 
 
     auto &absoluteSlip = std::get<VariableID::AbsoluteSlip>(outputData.vars);
     if (absoluteSlip.isActive) {
-      absoluteSlip[0][i] = slip[ltsId][nearestGaussPoint];
+      absoluteSlip(level, i) = slip[ltsId][nearestGaussPoint];
     }
 
 
     auto &peakSlipsRate = std::get<VariableID::PeakSlipsRate>(outputData.vars);
     if (peakSlipsRate.isActive) {
-      peakSlipsRate[0][i] = peakSR[ltsId][nearestGaussPoint];
+      peakSlipsRate(level, i) = peakSR[ltsId][nearestGaussPoint];
     }
 
 
@@ -279,16 +279,16 @@ void seissol::dr::output::Base::calcFaultOutput(const OutputType type, OutputDat
       auto slip1 = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->slip1));
       auto slip2 = reinterpret_cast<DrPaddedArrayT>(layer->var(dynRup->slip2));
 
-      slipVectors[DirectionID::STRIKE][i] = cos1 * slip1[ltsId][nearestGaussPoint] -
-                                            sin1 * slip2[ltsId][nearestGaussPoint];
+      slipVectors(DirectionID::STRIKE, level, i) = cos1 * slip1[ltsId][nearestGaussPoint] -
+                                                        sin1 * slip2[ltsId][nearestGaussPoint];
 
-      slipVectors[DirectionID::DIP][i] = sin1 * slip1[ltsId][nearestGaussPoint] +
-                                         cos1 * slip2[ltsId][nearestGaussPoint];
+      slipVectors(DirectionID::DIP, level, i) = sin1 * slip1[ltsId][nearestGaussPoint] +
+                                                     cos1 * slip2[ltsId][nearestGaussPoint];
     }
   }
 
   if (type == OutputType::AtPickpoint) {
-    outputData.cachedTime[outputData.currentPick] = time;
-    outputData.currentPick += 1;
+    outputData.cachedTime[outputData.currentCacheLevel] = time;
+    outputData.currentCacheLevel += 1;
   }
 }
