@@ -5,7 +5,7 @@
 #ifndef SEISSOL_DR_FRICTION_LAW_H
 #define SEISSOL_DR_FRICTION_LAW_H
 
-#include <c++/8.3.0/iostream>
+#include <iostream>
 #include "DR_math.h"
 #include <yaml-cpp/yaml.h>
 

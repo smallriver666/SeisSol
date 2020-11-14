@@ -40,25 +40,25 @@ public:
         break;
 
       case OutputType::AtPickpoint:
-        ppOutputBuilder.reset(new PickpointOutput);
+        ppOutputBuilder = std::make_unique<PickpointOutput>();
         ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
         break;
 
       case OutputType::Elementwise:
-        ewOutputBuilder.reset(new ElementWiseOutput);
+        ewOutputBuilder = std::make_unique<ElementWiseOutput>();
         ewOutputBuilder->setParams(Reader.getElementwiseFaultParams(), &Mesher);
         break;
 
       case OutputType::AtPickpointAndElementwise:
-        ppOutputBuilder.reset(new PickpointOutput);
+        ppOutputBuilder = std::make_unique<PickpointOutput>();
         ppOutputBuilder->setParams(Reader.getPickPointParams(), &Mesher);
 
-        ewOutputBuilder.reset(new ElementWiseOutput);
+        ewOutputBuilder = std::make_unique<ElementWiseOutput>();
         ewOutputBuilder->setParams(Reader.getElementwiseFaultParams(), &Mesher);
         break;
 
       default:
-        throw std::runtime_error("Unkown fault output type (e.g.3,4,5)");
+        throw std::runtime_error("Unknown fault output type (not 3,4,5)");
     }
   }
   void setDrData(initializers::LTSTree *userDrTree,
