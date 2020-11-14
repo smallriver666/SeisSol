@@ -21,6 +21,7 @@ namespace seissol {
 
         real* operator[](int dim) {
           assert(dim < DIM && "access is out of the DIM. bounds");
+          assert(data[dim] != nullptr && "data has been initialized yet");
           return data[dim];
         }
 
@@ -28,6 +29,7 @@ namespace seissol {
           assert(dim < DIM && "access is out of DIM. bounds");
           assert(level < maxCacheLevel && "access is out of cache bounds");
           assert(index < size && "access is out of size bounds");
+          assert(data[dim] != nullptr && "data has been initialized yet");
           return data[dim][index + level * size];
         }
 
@@ -35,6 +37,7 @@ namespace seissol {
           static_assert(DIM == 1, "access of the overload is allowed only for 1 dim variables");
           assert(level < maxCacheLevel && "access is out of cache bounds");
           assert(index < size && "access is out of size bounds");
+          assert(data[0] != nullptr && "data has been initialized yet");
           return data[0][index + level * size];
         }
 
