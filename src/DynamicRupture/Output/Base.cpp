@@ -220,7 +220,7 @@ void Base::calcFaultOutput(const OutputType type, OutputData& outputData, double
   size_t level = (type == OutputType::AtPickpoint) ? outputData.currentCacheLevel : 0;
   for (size_t i = 0; i < outputData.receiverPoints.size(); ++i) {
 
-    auto ltsMap = faceToLtsMap[outputData.receiverPoints[i].faultFaceIndex];
+    auto ltsMap = faceToLtsMap.at(outputData.receiverPoints.at(i).faultFaceIndex);
     auto* const layer = ltsMap.first;
     const auto ltsId = ltsMap.second;
 

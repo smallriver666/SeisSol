@@ -124,28 +124,33 @@ class PickPointBuilder : public OutputBuilder {
     auto meshElements = meshReader->getElements();
     auto meshVertices = meshReader->getVertices();
 
-    std::vector<Vertex> faultVertices(4 * numFaultElements);
-    std::vector<Element> faultElements(numFaultElements);
+    // we consider elements on both sides of the fault
+    std::vector<Vertex> faultVertices(2 * 4 * numFaultElements);
+    std::vector<Element> faultElements(2 * numFaultElements);
 
     // note: an element can have multiple fault faces
     std::unordered_map<size_t, std::vector<size_t>> elementToFault{};
 
+    size_t elementIdx = 0;
     for (size_t faultIdx{0}; faultIdx < numFaultElements; ++faultIdx) {
       const auto& faultItem = fault[faultIdx];
 
       // element copy done on purpose because we are recording
       // a new vertex array and thus we need to modify vertex indices
       // inside of each element
-      auto element = meshElements[faultItem.element];
-
-      for (size_t vertexIdx{0}; vertexIdx < 4; ++vertexIdx) {
-        const size_t faultVertexIdx = vertexIdx + 4 * faultIdx;
-        faultVertices[faultVertexIdx] = meshVertices[element.vertices[vertexIdx]];
-        element.vertices[vertexIdx] = faultVertexIdx;
+      std::array<Element*, 2> elements{&meshElements[faultItem.element],
+                                       &meshElements[faultItem.neighborElement]};
+      for (auto* element : elements) {
+        for (size_t vertexIdx{0}; vertexIdx < 4; ++vertexIdx) {
+          const size_t faultVertexIdx = vertexIdx + 4 * elementIdx;
+          faultVertices[faultVertexIdx] = meshVertices[element->vertices[vertexIdx]];
+          element->vertices[vertexIdx] = faultVertexIdx;
+        }
+        faultElements[elementIdx] = *element;
+        elementIdx += 1;
       }
-
-      faultElements[faultIdx] = element;
       elementToFault[faultItem.element].push_back(faultIdx);
+      elementToFault[faultItem.neighborElement].push_back(faultIdx);
     }
 
     return std::make_tuple(faultVertices, faultElements, elementToFault);
