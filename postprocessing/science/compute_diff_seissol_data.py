@@ -172,6 +172,8 @@ if same_geom:
     print("same indexing detected, no need to reindex arrays")
     geom1, connect1 = read_geom_connect(sx1)
     geom2, connect2 = read_geom_connect(sx2)
+    ind1 = slice(None, None, None)
+    ind2 = slice(None, None, None)
 else:
     geom1, connect1 = return_sorted_geom_connect(sx1, atol)
     geom2, connect2 = return_sorted_geom_connect(sx2, atol)
@@ -183,7 +185,7 @@ else:
 areas = compute_areas(geom1, connect1)
 
 if args.idt[0] == -1:
-    args.idt = list(range(0, sx1.ndt))
+    args.idt = list(range(0, min(sx1.ndt, sx2.ndt)))
 
 aData = []
 if args.Data == ["all"]:
@@ -209,18 +211,17 @@ for dataname in variable_names:
     myData1 = read_reshape2d(sx1, dataname)
     myData2 = read_reshape2d(sx2, dataname)
     ndt = min(myData1.shape[0], myData2.shape[0])
-    if same_geom:
-        myData = myData1[0:ndt, :] - myData2[0:ndt, :]
-    else:
-        myData = myData1[0:ndt, ind1] - myData2[0:ndt, ind2]
+    myData = myData1[0:ndt, ind1] - myData2[0:ndt, ind2]
 
     for idt in args.idt:
         if idt < ndt:
-            relative_error_l2 = l2_norm(areas, myData[idt, :]) / l2_norm(
-                areas, myData1[idt, ind1]
+            ref_norm1 = l1_norm(areas, myData1[idt, ind1])
+            ref_norm2 = l2_norm(areas, myData1[idt, ind1])
+            relative_error_l1 = (
+                l1_norm(areas, myData[idt, :]) / ref_norm1 if ref_norm1 else np.nan
             )
-            relative_error_l1 = l1_norm(areas, myData[idt, :]) / l1_norm(
-                areas, myData1[idt, ind1]
+            relative_error_l2 = (
+                l2_norm(areas, myData[idt, :]) / ref_norm2 if ref_norm2 else np.nan
             )
             min_error, max_error = np.amin(myData[idt, :]), np.amax(myData[idt, :])
             print(
