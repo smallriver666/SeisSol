@@ -243,8 +243,8 @@ for dataname in variable_names:
     )
     for idt in args.idt:
         if idt < ndt:
-            ref_norm1 = l1_norm(areas, myData1[idt, ind1])
-            ref_norm2 = l2_norm(areas, myData1[idt, ind1])
+            ref_norm1 = l1_norm(areas, myData1[idt * step1, ind1])
+            ref_norm2 = l2_norm(areas, myData1[idt * step1, ind1])
             relative_error_l1 = (
                 l1_norm(areas, myData[idt, :]) / ref_norm1 if ref_norm1 else np.nan
             )
