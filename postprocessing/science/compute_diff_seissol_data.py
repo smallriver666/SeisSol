@@ -8,6 +8,19 @@ import seissolxdmf as sx
 import seissolxdmfwriter as sw
 
 # These 2 latter modules are on pypi (e.g. pip install seissolxdmf)
+class seissolxdmfExtended(sx.seissolxdmf):
+    def ReadTimeStep(self):
+        try:
+            return super().ReadTimeStep()
+        except NameError:
+            return 0.0
+
+
+def readDt(sx):
+    try:
+        return sx.ReadTimeStep()
+    except NameError:
+        return 0.0
 
 
 def read_reshape2d(sx, dataname):
@@ -163,8 +176,22 @@ parser.add_argument(
 args = parser.parse_args()
 atol = args.atol[0]
 
-sx1 = sx.seissolxdmf(args.xdmf_filename1)
-sx2 = sx.seissolxdmf(args.xdmf_filename2)
+sx1 = seissolxdmfExtended(args.xdmf_filename1)
+sx2 = seissolxdmfExtended(args.xdmf_filename2)
+
+dt1 = sx1.ReadTimeStep()
+dt2 = sx2.ReadTimeStep()
+
+step1, step2 = 1, 1
+if min(dt1, dt2) > 0:
+    # allows comparison a differently sampled data
+    eps = 1e-6
+    if abs(round(dt2 / dt1) - dt2 / dt1) < eps:
+        step1 = round(dt2 / dt1)
+    if abs(round(dt1 / dt2) - dt1 / dt2) < eps:
+        step2 = round(dt1 / dt2)
+    if abs(dt2 - dt1) > eps and (max(step1, step2) == 1):
+        raise ValueError("dt1 != dt2 and not multiples")
 
 same_geom = same_geometry(sx1, sx2, atol)
 
@@ -185,7 +212,7 @@ else:
 areas = compute_areas(geom1, connect1)
 
 if args.idt[0] == -1:
-    args.idt = list(range(0, min(sx1.ndt, sx2.ndt)))
+    args.idt = list(range(0, min(sx1.ndt // step1, sx2.ndt // step2)))
 
 aData = []
 if args.Data == ["all"]:
@@ -210,9 +237,10 @@ for dataname in variable_names:
     print(dataname)
     myData1 = read_reshape2d(sx1, dataname)
     myData2 = read_reshape2d(sx2, dataname)
-    ndt = min(myData1.shape[0], myData2.shape[0])
-    myData = myData1[0:ndt, ind1] - myData2[0:ndt, ind2]
-
+    ndt = min(myData1.shape[0] // step1, myData2.shape[0] // step2)
+    myData = (
+        myData1[0 : ndt * step1 : step1, ind1] - myData2[0 : ndt * step2 : step2, ind2]
+    )
     for idt in args.idt:
         if idt < ndt:
             ref_norm1 = l1_norm(areas, myData1[idt, ind1])
@@ -235,9 +263,8 @@ for dataname in variable_names:
 prefix, ext = os.path.splitext(args.xdmf_filename1)
 fname = f"diff_{os.path.basename(prefix)}"
 
-try:
-    dt = sx1.ReadTimeStep()
-except NameError:
-    dt = 0.0
+
 out_names = ["diff_" + name for name in variable_names]
-sw.write_seissol_output(fname, geom1, connect1, out_names, aData, dt, args.idt)
+sw.write_seissol_output(
+    fname, geom1, connect1, out_names, aData, max(dt1, dt2), args.idt
+)
