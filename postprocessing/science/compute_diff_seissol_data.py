@@ -16,13 +16,6 @@ class seissolxdmfExtended(sx.seissolxdmf):
             return 0.0
 
 
-def readDt(sx):
-    try:
-        return sx.ReadTimeStep()
-    except NameError:
-        return 0.0
-
-
 def read_reshape2d(sx, dataname):
     """read seissol dataset
     and if there is only one time stamp
