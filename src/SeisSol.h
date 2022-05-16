@@ -308,7 +308,8 @@ public:
 	  return gravitationSetup;
 	}
 
-public:
+        double wiggleFactorLts = 1.0;
+
 	/** The only instance of this class; the main C++ functionality */
 	static SeisSol main;
 };
