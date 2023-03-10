@@ -1,4 +1,3 @@
-//
 /**
  * @file
  * This file is part of SeisSol.
